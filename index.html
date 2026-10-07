@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Simulateur d’examen civique – CR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#eef1f5;--surface:#ffffff;--ink:#14213d;--muted:#56607a;--line:#d6dce6;
+  --accent:#2447b5;--accent-soft:#e5ebfb;--accent-ink:#ffffff;
+  --sit:#8a4a06;--sit-soft:#fbeedd;
+  --good:#17703a;--good-soft:#e1f2e6;--bad:#b4232f;--bad-soft:#fae5e7;
+  --cell:#dfe4ec;--focus:#f2b705;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0f1522;--surface:#18202f;--ink:#e8ecf4;--muted:#a3adc2;--line:#2d384c;
+  --accent:#7d9bff;--accent-soft:#222f52;--accent-ink:#0f1522;
+  --sit:#f0b36a;--sit-soft:#3a2a17;
+  --good:#6fd394;--good-soft:#173527;--bad:#ff8a93;--bad-soft:#3d1a1f;
+  --cell:#2a3446;color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --paper:#0f1522;--surface:#18202f;--ink:#e8ecf4;--muted:#a3adc2;--line:#2d384c;
+  --accent:#7d9bff;--accent-soft:#222f52;--accent-ink:#0f1522;
+  --sit:#f0b36a;--sit-soft:#3a2a17;
+  --good:#6fd394;--good-soft:#173527;--bad:#ff8a93;--bad-soft:#3d1a1f;
+  --cell:#2a3446;color-scheme:dark;}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"Atkinson Hyperlegible",Verdana,"Segoe UI",sans-serif;font-size:18px;line-height:1.55}
+button{font:inherit;color:inherit;cursor:pointer;-webkit-appearance:none;appearance:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+button *{pointer-events:none}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.wrap{max-width:760px;margin:0 auto;padding:24px 18px 64px}
+h1{font-size:clamp(30px,5vw,42px);line-height:1.1;margin:8px 0 12px;letter-spacing:-.01em}
+h2{font-size:24px;margin:0 0 10px;line-height:1.2}
+p{margin:0 0 12px}
+.lead{color:var(--muted);max-width:60ch}
+.hidden{display:none!important}
+
+/* Accueil */
+.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin:22px 0 28px}
+.facts div{background:var(--surface);padding:14px 12px}
+.facts b{display:block;font-size:26px;line-height:1.1}
+.facts span{font-size:14px;color:var(--muted)}
+.modes{display:grid;gap:12px}
+.mode{display:grid;grid-template-columns:1fr auto;gap:4px 16px;align-items:center;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+.mode:hover:not(:disabled){border-color:var(--accent)}
+.mode:disabled{opacity:.5;cursor:not-allowed}
+.mode strong{font-size:20px}
+.mode small{grid-column:1;color:var(--muted);font-size:15px}
+.mode .go{grid-row:1/3;grid-column:2;font-size:15px;font-weight:700;color:var(--accent)}
+.mode.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.mode.primary small,.mode.primary .go{color:var(--accent-ink);opacity:.9}
+.history{margin-top:34px}
+.history table{width:100%;border-collapse:collapse;font-size:16px}
+.history td,.history th{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left}
+.history th{color:var(--muted);font-weight:400;font-size:14px}
+.ok{color:var(--good);font-weight:700}.ko{color:var(--bad);font-weight:700}
+.note{font-size:14px;color:var(--muted);margin-top:28px}
+.linkbtn{background:none;border:0;padding:0;color:var(--accent);text-decoration:underline;font-size:14px}
+
+/* Examen */
+.bar{position:sticky;top:0;z-index:5;background:var(--paper);padding:12px 0 10px;border-bottom:1px solid var(--line);top:env(safe-area-inset-top,0px)}
+.bar-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.count{font-weight:700}
+.timer{font-variant-numeric:tabular-nums;font-weight:700;font-size:22px;padding:2px 10px;border-radius:8px;background:var(--surface);border:1px solid var(--line)}
+.timer.low{color:var(--bad);border-color:var(--bad);background:var(--bad-soft)}
+.quit{background:none;border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:15px}
+.strip{display:grid;grid-template-columns:repeat(20,1fr);gap:3px}
+.strip button{height:16px;border:0;border-radius:3px;background:var(--cell);padding:0}
+.strip button.done{background:var(--accent)}
+.strip button.sit.done{background:var(--sit)}
+.strip button.cur{outline:2px solid var(--ink);outline-offset:1px}
+.strip button.right{background:var(--good)}
+.strip button.wrong{background:var(--bad)}
+.legend{display:flex;gap:16px;font-size:13px;color:var(--muted);margin-top:8px;flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+
+.qcard{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px 22px 18px;margin-top:20px}
+.qhead{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px;font-size:14px}
+.tag{padding:3px 10px;border-radius:999px;font-weight:700}
+.tag.kn{background:var(--accent-soft);color:var(--accent)}
+.tag.sit{background:var(--sit-soft);color:var(--sit)}
+.theme{color:var(--muted)}
+.qtext{font-size:21px;line-height:1.45;margin:0 0 18px;font-weight:700}
+.opts{display:grid;gap:10px}
+.opt{display:grid;grid-template-columns:34px 1fr;gap:12px;align-items:start;text-align:left;width:100%;background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:12px 14px}
+.opt:hover:not(:disabled){border-color:var(--accent)}
+.opt .k{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;border:1.5px solid var(--line);font-weight:700;font-size:15px}
+.opt[aria-checked="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.opt[aria-checked="true"] .k{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.opt.is-right{border-color:var(--good);background:var(--good-soft)}
+.opt.is-right .k{background:var(--good);border-color:var(--good);color:var(--surface)}
+.opt.is-wrong{border-color:var(--bad);background:var(--bad-soft)}
+.opt.is-wrong .k{background:var(--bad);border-color:var(--bad);color:var(--surface)}
+.opt:disabled{cursor:default}
+.explain{margin-top:16px;padding:14px 16px;border-radius:12px;background:var(--paper);font-size:16px}
+.explain b{display:block;margin-bottom:4px}
+.nav{display:flex;justify-content:space-between;gap:10px;margin-top:18px}
+.btn{border:1.5px solid var(--line);background:var(--surface);border-radius:10px;padding:11px 18px;font-weight:700;font-size:16px}
+.btn.main{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.kbd{font-size:13px;color:var(--muted);margin-top:14px;text-align:center}
+
+/* Résultats */
+.result-head{margin-top:16px;display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap}
+.big{font-size:clamp(64px,14vw,104px);line-height:.9;font-weight:700;letter-spacing:-.03em}
+.big small{font-size:.4em;color:var(--muted);letter-spacing:0}
+.verdict{font-size:22px;font-weight:700;padding-bottom:10px}
+.breakdown{margin:24px 0;display:grid;gap:12px}
+.row{display:grid;grid-template-columns:1fr 64px;gap:4px 12px;align-items:center;font-size:16px}
+.track{grid-column:1/3;height:8px;border-radius:4px;background:var(--cell);overflow:hidden}
+.track span{display:block;height:100%;background:var(--accent)}
+.row .n{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+.review{margin-top:28px}
+.ritem{background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--bad);border-radius:12px;padding:14px 16px;margin:12px 0;font-size:16px}
+.ritem.right{border-left-color:var(--good)}
+.ritem .q{font-weight:700;margin-bottom:8px}
+.ritem .you{color:var(--bad)}
+.ritem .good{color:var(--good)}
+.ritem .why{color:var(--muted);margin-top:6px}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.chip{border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 14px;font-size:15px}
+.chip[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:700}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+
+/* Thèmes et statistiques */
+.tip{background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--sit);border-radius:12px;padding:14px 16px;margin:0 0 18px;display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.tip p{margin:0}
+.tip .muted{color:var(--muted);font-size:15px}
+.back{background:none;border:0;padding:0;color:var(--accent);font-weight:700;margin-bottom:6px}
+.cats{display:grid;gap:10px;margin:18px 0}
+.cat{display:grid;grid-template-columns:1fr auto;gap:6px 14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;text-align:left;width:100%}
+.cat:hover{border-color:var(--accent)}
+.cat strong{font-size:18px}
+.cat .meta{grid-column:1/3;display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:14px;color:var(--muted)}
+.cat .pct{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.cat .track{grid-column:1/3;height:8px;border-radius:4px;background:var(--cell);overflow:hidden;position:relative}
+.cat .track span{display:block;height:100%}
+.cat .track .cov{position:absolute;inset:0 auto 0 0;background:var(--line)}
+.cat .track .rate{position:relative}
+.lvl{padding:2px 9px;border-radius:999px;font-weight:700;font-size:13px}
+.lvl.strong{background:var(--good-soft);color:var(--good)}
+.lvl.ok{background:var(--accent-soft);color:var(--accent)}
+.lvl.weak{background:var(--bad-soft);color:var(--bad)}
+.lvl.none{background:var(--cell);color:var(--muted)}
+.sizes{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0 4px}
+.sizes span{color:var(--muted);font-size:15px;margin-right:4px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin:18px 0 22px}
+.kpis div{background:var(--surface);padding:14px 12px}
+.kpis b{display:block;font-size:26px;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpis span{font-size:14px;color:var(--muted)}
+.prio{background:var(--surface);border:1.5px solid var(--sit);border-radius:14px;padding:16px 18px;margin:0 0 22px}
+.prio h2{font-size:20px;margin-bottom:6px}
+.prio ol{margin:8px 0 12px;padding-left:22px}
+.prio li{margin:4px 0}
+.chart{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 10px 6px;margin:12px 0 24px}
+.chart svg{display:block;width:100%;height:auto}
+.stats h2{margin-top:26px}
+.miss{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:10px 0;font-size:16px}
+.miss .q{font-weight:700}
+.miss .good{color:var(--good);margin-top:4px}
+.miss .cnt{color:var(--bad);font-size:14px;font-weight:700}
+.empty{color:var(--muted)}
+@media (max-width:560px){.kpis b{font-size:22px}}
+
+dialog{border:1px solid var(--line);border-radius:16px;background:var(--surface);color:var(--ink);max-width:420px;padding:22px}
+dialog::backdrop{background:rgba(10,15,30,.5)}
+
+@media (max-width:560px){
+  body{font-size:17px}
+  .facts{grid-template-columns:repeat(2,1fr)}
+  .qtext{font-size:19px}
+  .qcard{padding:18px 16px 14px}
+  .strip{grid-template-columns:repeat(20,1fr);gap:2px}
+}
+@media (prefers-reduced-motion:no-preference){.opt,.mode,.chip{transition:border-color .12s,background .12s}}
+</style>
+</head>
+<body>
+<div id="noJs" style="background:#fff3cd;color:#5c4400;border-bottom:1px solid #e6cf7a;padding:14px 16px;font-size:16px;line-height:1.45">
+<b>Les boutons ne répondent pas ?</b> Votre téléphone affiche ce fichier en aperçu, sans exécuter le simulateur (c’est le cas sur iPhone quand on ouvre un fichier depuis WhatsApp, Mail ou l’app Fichiers). Ouvrez plutôt le lien du simulateur dans Safari, ou touchez l’icône de partage puis « Ouvrir dans Safari ».
+</div>
+<div id="jsErr" style="display:none;background:#fae5e7;color:#b4232f;padding:10px 14px;font-size:14px"></div>
+<div class="wrap">
+
+<!-- ACCUEIL -->
+<section id="home">
+  <h1>Simulateur d’examen civique</h1>
+  <p class="lead">Entraînement à l’examen civique pour la carte de résident : questions de connaissance tirées de la liste officielle et mises en situation rédigées pour l’entraînement.</p>
+  <div class="facts">
+    <div><b>40</b><span>questions</span></div>
+    <div><b>12</b><span>mises en situation</span></div>
+    <div><b>45 min</b><span>maximum</span></div>
+    <div><b>32/40</b><span>pour réussir</span></div>
+  </div>
+  <div class="tip hidden" id="homeTip"></div>
+  <div class="modes">
+    <button class="mode primary" data-mode="exam"><strong>Examen blanc</strong><small>Conditions réelles : chronomètre, correction à la fin</small><span class="go">Commencer</span></button>
+    <button class="mode" data-mode="train"><strong>Entraînement</strong><small>Sans chronomètre, correction après chaque question</small><span class="go">Commencer</span></button>
+    <button class="mode" data-mode="sit"><strong>Mises en situation seulement</strong><small>20 situations de la vie quotidienne, correction immédiate</small><span class="go">Commencer</span></button>
+    <button class="mode" id="themeBtn"><strong>Entraînement par thème</strong><small>Choisissez une thématique, en commençant par vos points faibles</small><span class="go">Choisir</span></button>
+    <button class="mode" id="statsBtn"><strong>Mes statistiques</strong><small id="statsInfo">Points forts, points faibles et priorités de révision</small><span class="go">Voir</span></button>
+    <button class="mode" data-mode="errors" id="errBtn"><strong>Revoir mes erreurs</strong><small id="errInfo">Aucune erreur enregistrée pour l’instant</small><span class="go">Commencer</span></button>
+  </div>
+  <div class="history" id="history"></div>
+  <p class="note">Les mises en situation officielles ne sont pas publiées : celles proposées ici sont des exercices inspirés des thèmes de l’examen. La référence reste le site <a href="https://formation-civique.interieur.gouv.fr/" target="_blank" rel="noopener">formation-civique.interieur.gouv.fr</a>. Auteur du livret source : Sayouba OUEDRAOGO.</p>
+</section>
+
+<!-- CHOIX DU THÈME -->
+<section id="pick" class="hidden">
+  <button class="back" data-home>‹ Accueil</button>
+  <h1>Entraînement par thème</h1>
+  <p class="lead">Les thèmes sont classés du plus faible au plus solide. Dans chaque série, les questions ratées passent en premier, puis celles jamais vues.</p>
+  <div class="sizes" role="group" aria-label="Nombre de questions"><span>Nombre de questions :</span>
+    <button class="chip" data-n="10" aria-pressed="true">10</button>
+    <button class="chip" data-n="20" aria-pressed="false">20</button>
+    <button class="chip" data-n="0" aria-pressed="false">Toutes</button>
+  </div>
+  <div class="cats" id="pickList"></div>
+</section>
+
+<!-- STATISTIQUES -->
+<section id="stats" class="hidden stats">
+  <button class="back" data-home>‹ Accueil</button>
+  <h1>Mes statistiques</h1>
+  <div id="statsBody"></div>
+</section>
+
+<!-- QUESTIONS -->
+<section id="quiz" class="hidden">
+  <div class="bar">
+    <div class="bar-top">
+      <span class="count" id="count">Question 1 sur 40</span>
+      <span class="timer" id="timer" role="timer" aria-live="off">45:00</span>
+      <button class="quit" id="quitBtn">Quitter</button>
+    </div>
+    <div class="strip" id="strip" aria-label="Accès direct aux questions"></div>
+    <div class="legend" id="legend"><span><i style="background:var(--accent)"></i>Connaissance répondue</span><span><i style="background:var(--sit)"></i>Mise en situation répondue</span><span><i style="background:var(--cell)"></i>Sans réponse</span></div>
+  </div>
+  <article class="qcard" id="qcard" aria-live="polite">
+    <div class="qhead"><span class="tag" id="qtype"></span><span class="theme" id="qtheme"></span></div>
+    <p class="qtext" id="qtext"></p>
+    <div class="opts" id="opts" role="radiogroup" aria-labelledby="qtext"></div>
+    <div class="explain hidden" id="explain"></div>
+  </article>
+  <div class="nav">
+    <button class="btn" id="prevBtn">Précédente</button>
+    <button class="btn main" id="nextBtn">Suivante</button>
+  </div>
+  <p class="kbd">Clavier : touches A à D pour répondre, flèches gauche et droite pour naviguer.</p>
+</section>
+
+<!-- RÉSULTATS -->
+<section id="results" class="hidden">
+  <div class="result-head">
+    <div class="big" id="score">0<small>/40</small></div>
+    <div class="verdict" id="verdict"></div>
+  </div>
+  <p class="lead" id="resultInfo"></p>
+  <div class="breakdown" id="breakdown"></div>
+  <div class="tip hidden" id="resultTip"></div>
+  <div class="actions">
+    <button class="btn main" id="againBtn">Nouvel examen blanc</button>
+    <button class="btn" id="homeBtn">Retour à l’accueil</button>
+    <button class="btn" id="resStatsBtn">Mes statistiques</button>
+  </div>
+  <div class="review">
+    <h2>Correction détaillée</h2>
+    <div class="filters" role="group" aria-label="Filtrer la correction">
+      <button class="chip" data-f="wrong" aria-pressed="true">Erreurs et oublis</button>
+      <button class="chip" data-f="all" aria-pressed="false">Toutes les questions</button>
+    </div>
+    <div id="reviewList"></div>
+  </div>
+</section>
+
+</div>
+
+<dialog id="confirm">
+  <p id="confirmText"></p>
+  <div class="actions" style="justify-content:flex-end">
+    <button class="btn" value="no" id="cNo">Annuler</button>
+    <button class="btn main" value="yes" id="cYes">Confirmer</button>
+  </div>
+</dialog>
+
+<script>
+(function(){var n=document.getElementById('noJs');if(n)n.style.display='none';
+window.addEventListener('error',function(e){var b=document.getElementById('jsErr');if(b){b.textContent='Erreur : '+(e.message||'inconnue')+' (ligne '+(e.lineno||'?')+')';b.style.display='block';}});
+var ua=navigator.userAgent;window.__ecUA=ua;})();
+</script>
+<script>
+(function(){
+"use strict";
+const KNOW = [{"t": "Principes et valeurs de la République", "q": "Parmi les propositions suivantes, laquelle constitue une participation citoyenne ?", "o": ["Voter à une élection", "Refuser de respecter la loi", "Ne jamais s'informer", "Empêcher une association de fonctionner"], "a": 0, "e": "Participer à une élection est une forme de participation citoyenne."}, {"t": "Principes et valeurs de la République", "q": "Que garantit la liberté d’expression ?", "o": ["Le droit de tout dire sans aucune limite", "La possibilité d’exprimer ses idées dans les limites prévues par la loi", "Le droit d’insulter n’importe qui", "L’interdiction de critiquer les pouvoirs publics"], "a": 1, "e": "La liberté d’expression est une liberté fondamentale mais elle connaît des limites prévues par la loi."}, {"t": "Principes et valeurs de la République", "q": "À quoi sert un titre de séjour ?", "o": ["À prouver la nationalité française", "À justifier le droit au séjour dans les conditions prévues par la loi", "À remplacer un passeport dans tous les pays", "À obtenir automatiquement le droit de vote"], "a": 1, "e": "Le titre de séjour justifie le droit au séjour d’un étranger en France pendant sa période de validité et selon les conditions applicables."}, {"t": "Principes et valeurs de la République", "q": "La liberté de circulation permet à toute personne de :", "o": ["Circuler sans respecter les règles", "Se déplacer librement sous réserve des limites prévues par la loi", "Entrer dans n’importe quel pays sans document", "Conduire sans permis"], "a": 1, "e": "La liberté de circulation existe, mais elle peut être encadrée par la loi."}, {"t": "Principes et valeurs de la République", "q": "Complétez ces paroles de la Marseillaise : « Aux armes […] ! Formez vos bataillons »", "o": ["citoyens", "enfants", "soldats", "français"], "a": 0, "e": "La formule est « Aux armes, citoyens ! Formez vos bataillons »."}, {"t": "Principes et valeurs de la République", "q": "Complétez les paroles de la Marseillaise : « Allons enfants de la patrie […] »", "o": ["le jour de gloire est arrivé", "la liberté est arrivée", "la République est née", "la France nous appelle"], "a": 0, "e": "La suite est « Le jour de gloire est arrivé »."}, {"t": "Principes et valeurs de la République", "q": "Quelle est la devise de la France ?", "o": ["Liberté, Égalité, Fraternité", "Travail, Famille, Patrie", "Unité, Justice, Paix", "Liberté, Travail, Solidarité"], "a": 0, "e": "La devise de la République française est « Liberté, Égalité, Fraternité »."}, {"t": "Principes et valeurs de la République", "q": "La répudiation de sa femme est :", "o": ["Un droit reconnu en France", "Interdite et non reconnue par le droit français", "Obligatoire en cas de conflit", "Une procédure administrative"], "a": 1, "e": "Le droit français ne reconnaît pas la répudiation unilatérale de l’épouse."}, {"t": "Principes et valeurs de la République", "q": "Les impôts permettent de financer les dépenses publiques. Quelle proposition est correcte ?", "o": ["Ils financent notamment les services publics", "Ils sont facultatifs pour tous", "Ils financent uniquement les élections", "Ils remplacent les cotisations sociales"], "a": 0, "e": "Les impôts contribuent au financement des dépenses et services publics."}, {"t": "Principes et valeurs de la République", "q": "Que représente Marianne ?", "o": ["Une figure symbolique de la République", "La première ministre", "La capitale de la France", "Le drapeau européen"], "a": 0, "e": "Marianne est une figure symbolique de la République française."}, {"t": "Principes et valeurs de la République", "q": "Qu'est-ce que la liberté d'association ?", "o": ["Le droit de créer ou rejoindre une association dans le respect de la loi", "L'obligation de rejoindre une association", "L'interdiction de créer une association", "Le droit de ne jamais respecter les statuts"], "a": 0, "e": "La liberté d’association permet notamment de créer ou rejoindre une association dans le cadre légal."}, {"t": "Principes et valeurs de la République", "q": "Qu'est-ce que la liberté ?", "o": ["La possibilité d’agir sans aucune règle", "La possibilité d’agir et de penser dans les limites de la loi et des droits d’autrui", "Le droit de faire tout ce qui est interdit", "Le droit de ne respecter personne"], "a": 1, "e": "Les libertés individuelles s’exercent dans le respect de la loi et des droits des autres."}, {"t": "Principes et valeurs de la République", "q": "Un employeur refuse d’embaucher des femmes dans son entreprise. Que dit la loi ?", "o": ["C’est légal", "C’est une discrimination interdite", "C’est obligatoire dans certains métiers", "C’est permis si l’entreprise est privée"], "a": 1, "e": "Les discriminations fondées notamment sur le sexe sont interdites."}, {"t": "Principes et valeurs de la République", "q": "Une des valeurs de la devise républicaine est l’égalité. Qu’est-ce que cela signifie ?", "o": ["Tous ont les mêmes droits devant la loi", "Tout le monde reçoit exactement le même salaire", "Seuls les citoyens ont des droits", "Les différences sont interdites"], "a": 0, "e": "L’égalité signifie notamment l’égalité en droits et devant la loi."}, {"t": "Principes et valeurs de la République", "q": "Quelle est la place de la langue française dans la République ?", "o": ["Le français est la langue de la République", "Il n’existe aucune langue officielle", "L’anglais est la langue officielle", "Chaque commune choisit sa langue officielle"], "a": 0, "e": "L’article 2 de la Constitution dispose que la langue de la République est le français."}, {"t": "Principes et valeurs de la République", "q": "A-t-on le droit d’insulter publiquement quelqu’un parce qu’il est différent ?", "o": ["Oui, toujours", "Non", "Oui, si c’est sur internet", "Oui, si personne ne porte plainte"], "a": 1, "e": "Les propos injurieux ou discriminatoires peuvent être sanctionnés par la loi."}, {"t": "Principes et valeurs de la République", "q": "Le régime de la France est :", "o": ["Une monarchie", "Une République", "Une dictature", "Une confédération"], "a": 1, "e": "La France est une République."}, {"t": "Principes et valeurs de la République", "q": "Pourquoi le principe de laïcité doit-il être respecté à l’école ?", "o": ["Pour garantir la liberté de conscience et l’égalité des élèves", "Pour interdire toutes les religions", "Pour imposer une religion", "Pour interdire toute opinion"], "a": 0, "e": "La laïcité scolaire protège la liberté de conscience et l’égalité."}, {"t": "Principes et valeurs de la République", "q": "En quelle année la loi de séparation des Églises et de l’État a-t-elle été votée ?", "o": ["1789", "1905", "1945", "1958"], "a": 1, "e": "La loi de séparation des Églises et de l’État date du 9 décembre 1905."}, {"t": "Principes et valeurs de la République", "q": "Une personne a-t-elle le droit de ne pas croire en une religion ?", "o": ["Oui", "Non", "Seulement si elle est française", "Seulement à partir de 25 ans"], "a": 0, "e": "La liberté de conscience comprend notamment le droit de ne pas croire."}, {"t": "Principes et valeurs de la République", "q": "Quel droit est garanti par la laïcité ?", "o": ["La liberté de conscience", "Le droit d’imposer sa religion", "Le droit de discriminer", "L’obligation de pratiquer une religion"], "a": 0, "e": "La laïcité garantit notamment la liberté de conscience."}, {"t": "Principes et valeurs de la République", "q": "À l’école publique, qui peut porter des signes religieux très visibles ?", "o": ["Les élèves sans aucune restriction", "Les règles de l’école publique encadrent le port de signes religieux ostensibles par les élèves", "Personne, jamais", "Uniquement les enseignants"], "a": 1, "e": "La loi de 2004 encadre le port de signes ou tenues manifestant ostensiblement une appartenance religieuse dans les écoles, collèges et lycées publics."}, {"t": "Principes et valeurs de la République", "q": "Selon le principe de laïcité, que signifie la neutralité de l’État ?", "o": ["L’État ne favorise ni ne défavorise une religion", "L’État impose une religion", "L’État interdit toutes les religions", "L’État choisit la religion des citoyens"], "a": 0, "e": "La neutralité de l’État signifie qu’il ne privilégie ni ne défavorise une religion."}, {"t": "Principes et valeurs de la République", "q": "Qui doit respecter le principe de neutralité religieuse dans une préfecture ?", "o": ["Les agents publics dans l’exercice de leurs fonctions", "Uniquement les visiteurs", "Uniquement les enfants", "Personne"], "a": 0, "e": "Les agents publics sont soumis à une obligation de neutralité dans l’exercice de leurs fonctions."}, {"t": "Principes et valeurs de la République", "q": "La laïcité impose-t-elle aux agents publics d’être neutres vis-à-vis des usagers ?", "o": ["Oui", "Non", "Seulement le dimanche", "Seulement dans les mairies"], "a": 0, "e": "Les agents publics doivent respecter la neutralité du service public."}, {"t": "Principes et valeurs de la République", "q": "Que garantit le principe de laïcité ?", "o": ["La liberté de conscience", "Une religion officielle", "L’interdiction de croire", "La supériorité d’une religion"], "a": 0, "e": "La laïcité garantit notamment la liberté de conscience."}, {"t": "Principes et valeurs de la République", "q": "A-t-on le droit de changer de religion ?", "o": ["Oui", "Non", "Seulement avec l’autorisation de la mairie", "Seulement à 30 ans"], "a": 0, "e": "La liberté de conscience comprend la liberté de changer de religion."}, {"t": "Principes et valeurs de la République", "q": "Que représente la laïcité ?", "o": ["La liberté de conscience et la neutralité de l’État", "L’interdiction des religions", "Une religion d’État", "L’interdiction de parler de religion"], "a": 0, "e": "La laïcité n’interdit pas les religions."}, {"t": "Principes et valeurs de la République", "q": "Que dit l’article 1er de la Constitution française ?", "o": ["La France est une République indivisible, laïque, démocratique et sociale", "La France est une monarchie", "La France est un État religieux", "La France est une fédération"], "a": 0, "e": "C’est la formulation de l’article 1er de la Constitution."}, {"t": "Système institutionnel et politique", "q": "Qu'est-ce que l'État de droit ?", "o": ["Un système où chacun, y compris l’État, est soumis au droit", "Un système sans lois", "Un système où le président est au-dessus des lois", "Un système sans tribunaux"], "a": 0, "e": "Dans un État de droit, les pouvoirs publics comme les particuliers sont soumis au droit."}, {"t": "Système institutionnel et politique", "q": "La loi est l’expression de :", "o": ["La volonté générale", "La volonté d’un seul citoyen", "La volonté d’un ministre uniquement", "La volonté d’une entreprise"], "a": 0, "e": "La formule est notamment inscrite à l’article 6 de la DDHC : la loi est l’expression de la volonté générale."}, {"t": "Système institutionnel et politique", "q": "Quelle est la durée du mandat du conseil municipal et du maire ?", "o": ["3 ans", "5 ans", "6 ans", "7 ans"], "a": 2, "e": "Le mandat municipal est de six ans."}, {"t": "Système institutionnel et politique", "q": "Une personne peut-elle voter à la place d'une autre ?", "o": ["Oui, toujours", "Non, sauf les modalités légales de procuration", "Oui sans condition", "Oui si elle est majeure"], "a": 1, "e": "On ne vote pas à la place d’un électeur ; la procuration permet à un mandataire d’exercer le vote selon les règles prévues."}, {"t": "Système institutionnel et politique", "q": "Est-ce que le vote est obligatoire ?", "o": ["Oui", "Non", "Seulement aux présidentielles", "Seulement après 21 ans"], "a": 1, "e": "Le vote n’est pas obligatoire en France."}, {"t": "Système institutionnel et politique", "q": "À la fin de son mandat, le président de la République peut-il décider de rester au pouvoir ?", "o": ["Oui", "Non", "Oui s’il le souhaite", "Oui avec l’accord d’un ministre"], "a": 1, "e": "Le président ne peut pas prolonger seul son mandat."}, {"t": "Système institutionnel et politique", "q": "Qui dirige l'action du Gouvernement ?", "o": ["Le Premier ministre", "Le président du Sénat", "Le maire de Paris", "Le Conseil constitutionnel"], "a": 0, "e": "La Constitution prévoit que le Premier ministre dirige l’action du Gouvernement."}, {"t": "Système institutionnel et politique", "q": "Qui nomme le Premier ministre ?", "o": ["Le Président de la République", "Le Sénat", "Le maire", "Le Conseil constitutionnel"], "a": 0, "e": "Le Président de la République nomme le Premier ministre."}, {"t": "Système institutionnel et politique", "q": "Quelle est l'organisation administrative de la France ?", "o": ["Régions, départements et communes notamment", "Uniquement des communes", "Uniquement des régions", "Uniquement des départements"], "a": 0, "e": "La France est organisée notamment en régions, départements et communes."}, {"t": "Système institutionnel et politique", "q": "Qu'est-ce que le pouvoir législatif ?", "o": ["Le pouvoir de voter les lois", "Le pouvoir de juger", "Le pouvoir de commander la police", "Le pouvoir de nommer les maires"], "a": 0, "e": "Le pouvoir législatif est exercé par le Parlement."}, {"t": "Système institutionnel et politique", "q": "Pourquoi séparer les trois pouvoirs dans une démocratie ?", "o": ["Pour éviter leur concentration et garantir les équilibres", "Pour supprimer le Parlement", "Pour donner tous les pouvoirs au président", "Pour supprimer les tribunaux"], "a": 0, "e": "La séparation des pouvoirs protège les équilibres démocratiques."}, {"t": "Système institutionnel et politique", "q": "Qui sanctionne l'auteur d'un vol ?", "o": ["Une juridiction compétente, selon la procédure légale", "Le maire directement", "La victime", "N’importe quel citoyen"], "a": 0, "e": "Les sanctions pénales sont prononcées par les juridictions compétentes."}, {"t": "Système institutionnel et politique", "q": "Quel est le rôle du gouvernement ?", "o": ["Déterminer et conduire la politique de la Nation", "Voter seul toutes les lois", "Rendre les décisions de justice", "Élire les maires"], "a": 0, "e": "C’est une mission constitutionnelle du Gouvernement."}, {"t": "Système institutionnel et politique", "q": "Que se passe-t-il si un ministre ne respecte pas la loi ?", "o": ["Il bénéficie d’une immunité générale", "Il peut être soumis aux règles de droit et, selon les faits, à des procédures et sanctions", "La loi ne s’applique pas à lui", "Le maire décide de sa peine"], "a": 1, "e": "Les membres du Gouvernement ne sont pas au-dessus de la loi."}, {"t": "Système institutionnel et politique", "q": "Combien de députés composent l’Assemblée nationale ?", "o": ["348", "577", "705", "925"], "a": 1, "e": "L’Assemblée nationale compte 577 députés."}, {"t": "Système institutionnel et politique", "q": "Pour combien de temps sont élus les sénateurs ?", "o": ["3 ans", "4 ans", "5 ans", "6 ans"], "a": 3, "e": "Le mandat des sénateurs est de six ans."}, {"t": "Système institutionnel et politique", "q": "La séparation des pouvoirs est un principe fondamental. Quels sont les trois pouvoirs concernés ?", "o": ["Exécutif, législatif, judiciaire", "Municipal, régional, européen", "Fiscal, économique, social", "Civil, militaire, religieux"], "a": 0, "e": "Les trois pouvoirs classiquement distingués sont exécutif, législatif et judiciaire."}, {"t": "Système institutionnel et politique", "q": "Est-ce que le président de la République a tous les pouvoirs ?", "o": ["Oui", "Non", "Oui en période normale", "Oui si le Parlement est réuni"], "a": 1, "e": "Les pouvoirs sont répartis entre différentes institutions."}, {"t": "Système institutionnel et politique", "q": "Qui est le préfet ?", "o": ["Le représentant de l’État dans le département ou la région selon ses fonctions", "Le maire", "Le président du Sénat", "Un juge élu"], "a": 0, "e": "Le préfet représente l’État dans le territoire."}, {"t": "Système institutionnel et politique", "q": "Qui dirige la commune ?", "o": ["Le maire", "Le préfet", "Le député", "Le sénateur"], "a": 0, "e": "Le maire dirige l’administration communale."}, {"t": "Système institutionnel et politique", "q": "Quel est le régime politique de la France aujourd'hui ?", "o": ["Une République", "Une monarchie", "Une théocratie", "Une dictature"], "a": 0, "e": "La France est une République."}, {"t": "Système institutionnel et politique", "q": "Qu'est-ce que l'Hôtel de Matignon ?", "o": ["La résidence et les services du Premier ministre", "Le siège du Sénat", "Le siège du Conseil constitutionnel", "La résidence du Président"], "a": 0, "e": "L’Hôtel de Matignon est la résidence officielle du Premier ministre."}, {"t": "Système institutionnel et politique", "q": "Le Parlement est composé :", "o": ["De l’Assemblée nationale et du Sénat", "Du Gouvernement et du Sénat", "Des maires et préfets", "Du Président et du Gouvernement"], "a": 0, "e": "Le Parlement français est bicaméral."}, {"t": "Système institutionnel et politique", "q": "Quel est le rôle du président de la République ?", "o": ["Être le chef de l’État et exercer les compétences que lui confère la Constitution", "Diriger seul toutes les communes", "Rendre les jugements", "Voter seul les lois"], "a": 0, "e": "Le Président est le chef de l’État et dispose des pouvoirs prévus par la Constitution."}, {"t": "Système institutionnel et politique", "q": "Quel est le rôle du Premier ministre ?", "o": ["Diriger l’action du Gouvernement", "Présider le Conseil constitutionnel", "Diriger les communes", "Élire les sénateurs"], "a": 0, "e": "Le Premier ministre dirige l’action du Gouvernement."}, {"t": "Système institutionnel et politique", "q": "Qui est le chef du Gouvernement ?", "o": ["Le Premier ministre", "Le Président du Sénat", "Le Président de la République", "Le préfet"], "a": 0, "e": "Le Premier ministre est le chef du Gouvernement."}, {"t": "Système institutionnel et politique", "q": "Combien y a-t-il de régions en France ?", "o": ["13", "18", "22", "101"], "a": 1, "e": "La France compte 18 régions : 13 en métropole et 5 en outre-mer."}, {"t": "Système institutionnel et politique", "q": "Quel est le rôle du Défenseur des droits ?", "o": ["Protéger les droits et libertés et lutter contre certaines discriminations", "Voter les lois", "Diriger le Gouvernement", "Organiser les élections"], "a": 0, "e": "Le Défenseur des droits est une autorité constitutionnelle indépendante."}, {"t": "Système institutionnel et politique", "q": "Depuis quand l'euro est-elle la monnaie unique ?", "o": ["1992", "1999 pour les transactions scripturales puis 2002 pour les billets et pièces", "2007", "2015"], "a": 1, "e": "L’euro a été introduit en 1999 pour les opérations non monétaires et les billets et pièces en 2002."}, {"t": "Système institutionnel et politique", "q": "Quel est le rôle principal des communes ?", "o": ["Gérer des services et affaires de proximité", "Diriger la politique étrangère", "Voter les lois nationales", "Nommer les ministres"], "a": 0, "e": "La commune est l’échelon de proximité de l’administration territoriale."}, {"t": "Système institutionnel et politique", "q": "Quel État a quitté l'Union européenne en 2020 ?", "o": ["La Suisse", "Le Royaume-Uni", "La Norvège", "La Turquie"], "a": 1, "e": "Le Royaume-Uni a quitté l’Union européenne en 2020."}, {"t": "Système institutionnel et politique", "q": "Quelle est la devise de l’Union européenne ?", "o": ["Unie dans la diversité", "Liberté, Égalité, Fraternité", "In varietate concordia", "L’Europe aux Européens"], "a": 0, "e": "La devise de l’UE est « Unie dans la diversité »."}, {"t": "Système institutionnel et politique", "q": "Quel est l'hymne de l'Union européenne ?", "o": ["La Marseillaise", "L’Ode à la joie", "God Save the King", "Le Chant des partisans"], "a": 1, "e": "L’hymne européen est l’Ode à la joie de Beethoven."}, {"t": "Système institutionnel et politique", "q": "De quoi est composé le drapeau européen ?", "o": ["Un cercle de 12 étoiles jaunes sur fond bleu", "27 étoiles rouges", "12 bandes bleues", "Une croix blanche"], "a": 0, "e": "Le drapeau européen est bleu avec douze étoiles jaunes disposées en cercle."}, {"t": "Système institutionnel et politique", "q": "De quelle couleur est le drapeau européen ?", "o": ["Bleu", "Rouge", "Vert", "Blanc"], "a": 0, "e": "Le fond du drapeau européen est bleu."}, {"t": "Système institutionnel et politique", "q": "En quelle année le traité de Maastricht a-t-il été signé ?", "o": ["1951", "1957", "1992", "2002"], "a": 2, "e": "Le traité de Maastricht a été signé en 1992."}, {"t": "Système institutionnel et politique", "q": "Où est le siège du Parlement européen ?", "o": ["Strasbourg", "Paris uniquement", "Madrid", "Rome"], "a": 0, "e": "Strasbourg est le siège officiel du Parlement européen, qui travaille également à Bruxelles et Luxembourg."}, {"t": "Système institutionnel et politique", "q": "Quand célèbre-t-on la journée de l'Europe ?", "o": ["9 mai", "14 juillet", "8 mai", "1er janvier"], "a": 0, "e": "La Journée de l’Europe est célébrée le 9 mai."}, {"t": "Système institutionnel et politique", "q": "À quelle fréquence les élections européennes sont-elles organisées ?", "o": ["Tous les 2 ans", "Tous les 4 ans", "Tous les 5 ans", "Tous les 7 ans"], "a": 2, "e": "Les élections européennes ont lieu tous les cinq ans."}, {"t": "Système institutionnel et politique", "q": "Quel pays est un pays fondateur de l'Union européenne ?", "o": ["France", "Canada", "Japon", "Maroc"], "a": 0, "e": "La France fait partie des six pays fondateurs des Communautés européennes."}, {"t": "Droits et devoirs", "q": "À quelle liberté la PMA fait-elle référence ?", "o": ["Au droit de disposer de son corps et à la vie personnelle, dans le cadre de la loi", "À la liberté de conduire", "À la liberté fiscale", "À la liberté de vote des entreprises"], "a": 0, "e": "La PMA relève des droits liés à la personne et est encadrée par la loi."}, {"t": "Droits et devoirs", "q": "Au nom de quoi l'État justifie-t-il la restriction des droits ?", "o": ["Notamment pour protéger l’ordre public et les droits d’autrui, dans les conditions prévues par la loi", "Pour empêcher toute liberté", "Pour imposer une religion", "Pour supprimer les élections"], "a": 0, "e": "Les libertés peuvent être encadrées par la loi pour des motifs légitimes."}, {"t": "Droits et devoirs", "q": "Concernant le droit de se marier, quelle proposition est correcte ?", "o": ["Le mariage repose sur le consentement libre des époux", "Le mariage peut être forcé", "Un parent choisit toujours le conjoint", "La polygamie est la règle"], "a": 0, "e": "Le consentement libre et éclairé est essentiel au mariage."}, {"t": "Droits et devoirs", "q": "Est-il toujours possible de divorcer ?", "o": ["Oui, le divorce est prévu par la loi selon différentes procédures", "Non, jamais", "Uniquement pour les hommes", "Uniquement après 20 ans de mariage"], "a": 0, "e": "Le divorce est prévu par le droit français selon des procédures légales."}, {"t": "Droits et devoirs", "q": "La peine de mort est :", "o": ["Abolie en France", "Obligatoire pour les crimes", "Réservée aux étrangers", "Encore appliquée"], "a": 0, "e": "La peine de mort est abolie en France depuis 1981."}, {"t": "Droits et devoirs", "q": "Laquelle de ces citations est inscrite dans la Déclaration des droits de l’homme et du citoyen de 1789 ?", "o": ["Les hommes naissent et demeurent libres et égaux en droits", "Le travail est obligatoire", "La religion officielle est obligatoire", "Le vote est obligatoire"], "a": 0, "e": "L’article 1er de la DDHC proclame notamment la liberté et l’égalité en droits."}, {"t": "Droits et devoirs", "q": "Le recours à l'avortement est-il autorisé ?", "o": ["Oui, dans les conditions prévues par la loi", "Non", "Seulement avec l’autorisation du conjoint", "Seulement pour les citoyennes françaises"], "a": 0, "e": "L’IVG est un droit encadré par la loi."}, {"t": "Droits et devoirs", "q": "Que contient la Constitution ?", "o": ["Les règles fondamentales relatives aux institutions et des principes et droits fondamentaux", "Uniquement le Code de la route", "Uniquement les règles fiscales", "Les horaires des écoles"], "a": 0, "e": "La Constitution organise les pouvoirs publics et consacre des principes fondamentaux."}, {"t": "Droits et devoirs", "q": "Que garantit la liberté de la presse ?", "o": ["La liberté d’informer et de publier dans les limites prévues par la loi", "L’absence totale de responsabilité", "L’interdiction de toute critique", "Le droit d’inventer des faits sans limite"], "a": 0, "e": "La liberté de la presse est protégée mais encadrée par la loi."}, {"t": "Droits et devoirs", "q": "Que prévoit la Charte de l'environnement ?", "o": ["Des droits et devoirs relatifs à la protection de l’environnement", "La suppression des communes", "La création de l’euro", "L’interdiction de voter"], "a": 0, "e": "La Charte de l’environnement a valeur constitutionnelle."}, {"t": "Droits et devoirs", "q": "Que signifie la dignité humaine ?", "o": ["Le respect de la valeur et de l’intégrité de toute personne", "Le droit de maltraiter une personne", "Un privilège réservé aux citoyens", "Une règle fiscale"], "a": 0, "e": "La dignité humaine est un principe fondamental de protection de la personne."}, {"t": "Droits et devoirs", "q": "Que signifie le droit de manifester ?", "o": ["Pouvoir exprimer collectivement des revendications dans le respect des règles légales", "Pouvoir bloquer toute activité sans aucune règle", "Pouvoir commettre des violences", "Pouvoir imposer une opinion"], "a": 0, "e": "La manifestation est une liberté encadrée notamment par les règles relatives à l’ordre public."}, {"t": "Droits et devoirs", "q": "Que signifie PMA ?", "o": ["Procréation médicalement assistée", "Protection médicale administrative", "Programme mondial d’alimentation", "Prévention médicale avancée"], "a": 0, "e": "PMA signifie procréation médicalement assistée."}, {"t": "Droits et devoirs", "q": "Quel texte est le plus difficile à modifier ?", "o": ["La Constitution", "Un règlement intérieur d’entreprise", "Un arrêté municipal", "Un contrat privé"], "a": 0, "e": "La Constitution est soumise à une procédure de révision spécifique et renforcée."}, {"t": "Droits et devoirs", "q": "Quelle liberté permet à une personne de croire en la religion de son choix ?", "o": ["La liberté de conscience", "La liberté fiscale", "La liberté économique", "La liberté de circulation uniquement"], "a": 0, "e": "La liberté de conscience comprend notamment la liberté de religion."}, {"t": "Droits et devoirs", "q": "Qu'est-ce que le droit de grève ?", "o": ["Le droit de cesser collectivement le travail dans les conditions prévues par la loi", "Le droit de ne jamais travailler", "Un congé obligatoire", "Le droit de licencier son employeur"], "a": 0, "e": "Le droit de grève est une liberté constitutionnelle encadrée par la loi."}, {"t": "Droits et devoirs", "q": "L'État peut-il limiter les droits et libertés ?", "o": ["Oui, dans les conditions prévues par la loi et pour des motifs légitimes", "Jamais", "Uniquement pour des raisons religieuses", "Uniquement pour les étrangers"], "a": 0, "e": "Les libertés ne sont pas absolues et peuvent être limitées dans le respect du droit."}, {"t": "Droits et devoirs", "q": "Jeter un mégot par terre est :", "o": ["Interdit et peut être sanctionné", "Obligatoire", "Autorisé partout", "Une pratique recommandée"], "a": 0, "e": "Les règles environnementales et de propreté interdisent notamment l’abandon de déchets sur la voie publique."}, {"t": "Droits et devoirs", "q": "Pourquoi doit-on trier ses déchets ?", "o": ["Pour favoriser leur réemploi, recyclage ou valorisation", "Pour augmenter les déchets", "Pour éviter toute collecte", "Pour supprimer les services publics"], "a": 0, "e": "Le tri permet notamment d’orienter les déchets vers les filières adaptées."}, {"t": "Droits et devoirs", "q": "Que doit faire une victime de violences ?", "o": ["Chercher de l’aide, se protéger et signaler les faits aux services compétents", "Garder le silence obligatoirement", "Répondre par la violence", "Quitter la France"], "a": 0, "e": "La victime peut solliciter les services de secours, la police/gendarmerie, les professionnels de santé et les associations."}, {"t": "Droits et devoirs", "q": "Que doit-on faire face aux ordres des policiers ou gendarmes ?", "o": ["Respecter les ordres légaux et les règles applicables", "Refuser systématiquement", "Obéir à tout ordre manifestement criminel", "Ignorer toute instruction"], "a": 0, "e": "Les forces de l’ordre peuvent donner des ordres dans le cadre de leurs missions ; les ordres doivent être légaux."}, {"t": "Droits et devoirs", "q": "Quel est le rôle de la police ?", "o": ["Protéger les personnes et les biens, maintenir l’ordre public et constater certaines infractions", "Voter les lois", "Rendre tous les jugements", "Élire les maires"], "a": 0, "e": "La police exerce des missions de sécurité, de maintien de l’ordre et de police judiciaire selon les compétences."}, {"t": "Droits et devoirs", "q": "Quelle est l'infraction la plus grave ?", "o": ["La contravention", "Le délit", "Le crime", "L’incivilité"], "a": 2, "e": "Le crime est la catégorie d’infraction la plus grave."}, {"t": "Droits et devoirs", "q": "Quelle obligation concerne toutes les personnes résidant en France quelle que soit leur nationalité ?", "o": ["Respecter les lois françaises", "Voter aux élections nationales", "Être membre d’un parti", "Faire le service militaire"], "a": 0, "e": "Toute personne résidant en France doit respecter les lois et règlements français."}, {"t": "Droits et devoirs", "q": "Quelle proposition représente un exemple de crime ?", "o": ["Un meurtre", "Un simple stationnement interdit", "Une petite infraction administrative", "Un retard au travail"], "a": 0, "e": "Le meurtre est un crime."}, {"t": "Droits et devoirs", "q": "Quelle proposition représente un exemple de délit ?", "o": ["Un vol", "Une erreur d’orthographe", "Un retard scolaire", "Une absence à une fête"], "a": 0, "e": "Le vol constitue un délit dans les cas ordinaires prévus par la loi."}, {"t": "Droits et devoirs", "q": "Qui veille au maintien de l'ordre public ?", "o": ["Les autorités et forces compétentes, notamment sous l’autorité de l’État selon les situations", "Uniquement les particuliers", "Uniquement les associations", "Uniquement les entreprises"], "a": 0, "e": "Le maintien de l’ordre public relève des autorités publiques compétentes."}, {"t": "Histoire, géographie et culture", "q": "Quel était le surnom de Louis XIV ?", "o": ["Le Roi-Soleil", "Le Roi-Citoyen", "Le Petit Caporal", "Le Père de la République"], "a": 0, "e": "Louis XIV est surnommé le Roi-Soleil."}, {"t": "Histoire, géographie et culture", "q": "Quel roi de France a été exécuté pendant la Révolution française ?", "o": ["Louis XIV", "Louis XV", "Louis XVI", "Charles X"], "a": 2, "e": "Louis XVI a été guillotiné en 1793."}, {"t": "Histoire, géographie et culture", "q": "En quelle année Napoléon Ier est-il devenu empereur ?", "o": ["1789", "1799", "1804", "1815"], "a": 2, "e": "Napoléon Bonaparte devient empereur des Français en 1804."}, {"t": "Histoire, géographie et culture", "q": "De quand date l'appel à la résistance du général de Gaulle ?", "o": ["14 juillet 1940", "18 juin 1940", "8 mai 1945", "11 novembre 1918"], "a": 1, "e": "L’appel du 18 juin 1940 est associé au général de Gaulle."}, {"t": "Histoire, géographie et culture", "q": "Pourquoi la Shoah est-elle étudiée à l'école ?", "o": ["Pour connaître et comprendre le génocide des Juifs d’Europe et lutter contre le négationnisme et l’antisémitisme", "Pour glorifier la guerre", "Pour apprendre une religion", "Pour remplacer l’histoire de France"], "a": 0, "e": "L’enseignement de la Shoah participe à la connaissance historique et à la lutte contre le racisme et l’antisémitisme."}, {"t": "Histoire, géographie et culture", "q": "Depuis quand les Français élisent-ils le président de la République au suffrage universel direct ?", "o": ["1944", "1958", "1962", "1981"], "a": 2, "e": "L’élection présidentielle au suffrage universel direct résulte de la réforme de 1962."}, {"t": "Histoire, géographie et culture", "q": "Quelle est la première étape de la construction européenne en 1951 ?", "o": ["La CECA", "L’euro", "Schengen", "Le traité de Maastricht"], "a": 0, "e": "La Communauté européenne du charbon et de l’acier (CECA) est créée par le traité de Paris de 1951."}, {"t": "Histoire, géographie et culture", "q": "Durant le mandat de quel président la peine de mort a-t-elle été abolie ?", "o": ["Charles de Gaulle", "François Mitterrand", "Jacques Chirac", "Valéry Giscard d’Estaing"], "a": 1, "e": "La peine de mort est abolie en 1981 sous la présidence de François Mitterrand."}, {"t": "Histoire, géographie et culture", "q": "Quel régime politique a été mis en place pendant la Révolution française en 1792 ?", "o": ["La Première République", "La Ve République", "La monarchie de Juillet", "L’Empire"], "a": 0, "e": "La Première République est proclamée en 1792."}, {"t": "Histoire, géographie et culture", "q": "En 1944, qu'est-ce qui a changé pour les femmes ?", "o": ["Elles ont obtenu le droit de vote et d’éligibilité", "Elles ont obtenu le droit de conduire uniquement", "Elles ont obtenu la majorité à 16 ans", "Elles ont obtenu la fonction présidentielle"], "a": 0, "e": "L’ordonnance du 21 avril 1944 accorde aux femmes le droit de vote et d’éligibilité."}, {"t": "Histoire, géographie et culture", "q": "Quelle organisation internationale a été créée en 1945 après la Seconde Guerre mondiale ?", "o": ["ONU", "OTAN", "CEE", "UNESCO uniquement"], "a": 0, "e": "L’Organisation des Nations unies est créée en 1945."}, {"t": "Histoire, géographie et culture", "q": "Quelle peine a été supprimée en 1981 ?", "o": ["La peine de mort", "La prison", "L’amende", "Le travail d’intérêt général"], "a": 0, "e": "La peine de mort est abolie en 1981."}, {"t": "Histoire, géographie et culture", "q": "En quelle année l'euro est-il devenu la monnaie utilisée en France ?", "o": ["1992", "1999", "2002", "2010"], "a": 2, "e": "Les billets et pièces en euros sont mis en circulation en 2002."}, {"t": "Histoire, géographie et culture", "q": "En quelle année a commencé la Première Guerre mondiale ?", "o": ["1914", "1918", "1939", "1945"], "a": 0, "e": "La Première Guerre mondiale commence en 1914."}, {"t": "Histoire, géographie et culture", "q": "Où a eu lieu le débarquement en 1944 ?", "o": ["Normandie", "Provence uniquement", "Bretagne uniquement", "Corse"], "a": 0, "e": "Le débarquement allié du 6 juin 1944 a lieu en Normandie."}, {"t": "Histoire, géographie et culture", "q": "Que fête-t-on le 8 mai ?", "o": ["La victoire de 1945 en Europe", "La fête nationale", "L’abolition de l’esclavage", "La création de l’euro"], "a": 0, "e": "Le 8 mai commémore la victoire des Alliés en Europe en 1945."}, {"t": "Histoire, géographie et culture", "q": "Quelle mer ou océan borde la France métropolitaine ?", "o": ["Atlantique et Méditerranée notamment", "Uniquement l’océan Indien", "Uniquement le Pacifique", "Aucune"], "a": 0, "e": "La France métropolitaine possède des façades sur l’Atlantique, la Manche, la mer du Nord et la Méditerranée."}, {"t": "Histoire, géographie et culture", "q": "Quel pays a une frontière terrestre avec la France métropolitaine ?", "o": ["Espagne", "Portugal", "Autriche", "Pologne"], "a": 0, "e": "L’Espagne partage une frontière terrestre avec la France métropolitaine."}, {"t": "Histoire, géographie et culture", "q": "Quelle mer se situe entre la France et l’Angleterre ?", "o": ["La Manche", "La Méditerranée", "La mer Noire", "La mer Baltique"], "a": 0, "e": "La Manche sépare la France de l’Angleterre."}, {"t": "Histoire, géographie et culture", "q": "Qu'est-ce que la France d'outre-mer ?", "o": ["Les territoires français situés hors de la métropole", "Une autre République", "Uniquement la Corse", "Uniquement Paris"], "a": 0, "e": "La France possède des territoires ultramarins dans plusieurs océans et régions du monde."}, {"t": "Histoire, géographie et culture", "q": "Quelle chaîne de montagnes est située entre la France et l’Espagne ?", "o": ["Les Pyrénées", "Les Alpes", "Le Jura", "Les Vosges"], "a": 0, "e": "Les Pyrénées forment la frontière montagneuse principale entre la France et l’Espagne."}, {"t": "Histoire, géographie et culture", "q": "Quelle île française se trouve dans l'océan Indien ?", "o": ["La Réunion", "La Corse", "Belle-Île", "Oléron"], "a": 0, "e": "La Réunion est un département et une région d’outre-mer de l’océan Indien."}, {"t": "Histoire, géographie et culture", "q": "Quel fleuve traverse Paris ?", "o": ["La Seine", "La Loire", "Le Rhône", "La Garonne"], "a": 0, "e": "La Seine traverse Paris."}, {"t": "Histoire, géographie et culture", "q": "Qui était Marguerite Yourcenar ?", "o": ["Une écrivaine française", "Une reine", "Une scientifique américaine", "Une chanteuse"], "a": 0, "e": "Marguerite Yourcenar est une écrivaine française, première femme élue à l’Académie française."}, {"t": "Histoire, géographie et culture", "q": "Quel peintre est français ?", "o": ["Auguste Renoir", "Pablo Picasso", "Diego Velázquez", "Rembrandt"], "a": 0, "e": "Auguste Renoir est un peintre français."}, {"t": "Histoire, géographie et culture", "q": "Quel musée est situé à Paris ?", "o": ["Le Louvre", "Le Prado", "Les Offices", "Le Rijksmuseum"], "a": 0, "e": "Le musée du Louvre est à Paris."}, {"t": "Histoire, géographie et culture", "q": "Qui était Auguste Rodin ?", "o": ["Un sculpteur français", "Un président", "Un explorateur", "Un compositeur"], "a": 0, "e": "Auguste Rodin est un sculpteur français."}, {"t": "Histoire, géographie et culture", "q": "Quelle cathédrale célèbre a été en partie détruite par un incendie en 2019 ?", "o": ["Notre-Dame de Paris", "Chartres", "Reims", "Amiens"], "a": 0, "e": "Notre-Dame de Paris a été gravement endommagée par un incendie le 15 avril 2019."}, {"t": "Vivre dans la société française", "q": "Quel mariage est reconnu par l'État ?", "o": ["Le mariage civil", "Uniquement un mariage religieux", "Un mariage verbal", "Un mariage sans consentement"], "a": 0, "e": "Le mariage civil est celui qui produit des effets juridiques en France."}, {"t": "Vivre dans la société française", "q": "Auprès de quelle institution les parents peuvent-ils inscrire leur enfant à l'école publique ?", "o": ["La mairie pour l’inscription scolaire initiale, selon les démarches locales", "La préfecture uniquement", "Le tribunal uniquement", "La banque"], "a": 0, "e": "Pour l’école publique, l’inscription passe notamment par la mairie pour l’affectation, puis l’établissement selon les modalités locales."}, {"t": "Vivre dans la société française", "q": "En cas de divorce, qui exerce l'autorité parentale ?", "o": ["En principe les deux parents, sauf décision contraire du juge", "Uniquement le père", "Uniquement la mère", "Le maire"], "a": 0, "e": "Le divorce ne supprime pas automatiquement l’autorité parentale de l’un des parents."}, {"t": "Vivre dans la société française", "q": "Quelle aide permet aux personnes qui ont des difficultés financières d'avoir un avocat ?", "o": ["L’aide juridictionnelle", "La carte Vitale", "Le RSA uniquement", "La CAF uniquement"], "a": 0, "e": "L’aide juridictionnelle permet, sous conditions, une prise en charge totale ou partielle des frais de justice."}, {"t": "Vivre dans la société française", "q": "Où faut-il déclarer la naissance d'un enfant ?", "o": ["À la mairie du lieu de naissance", "À la banque", "À France Travail", "À la préfecture uniquement"], "a": 0, "e": "La naissance doit être déclarée à l’officier d’état civil de la commune du lieu de naissance dans le délai légal."}, {"t": "Vivre dans la société française", "q": "Quelle est l'une des conditions pour passer l'examen du permis de conduire ?", "o": ["Remplir les conditions d’âge et d’inscription prévues par la réglementation", "Avoir 12 ans", "Être propriétaire d’une voiture", "Être citoyen français"], "a": 0, "e": "Le permis est accessible selon des conditions réglementaires d’âge, d’inscription et de formation."}, {"t": "Vivre dans la société française", "q": "Un bail locatif est valide s'il est :", "o": ["Conforme aux règles légales applicables", "Toujours oral uniquement", "Signé uniquement par le propriétaire", "Sans aucune information sur le logement"], "a": 0, "e": "Le bail doit respecter les règles légales applicables à la location."}, {"t": "Vivre dans la société française", "q": "Où peut-on déposer un lave-vaisselle cassé ?", "o": ["Dans une filière de collecte adaptée, déchetterie ou point de reprise", "Dans la rue", "Dans une rivière", "Dans une forêt"], "a": 0, "e": "Les équipements électriques doivent être orientés vers les filières de collecte appropriées."}, {"t": "Vivre dans la société française", "q": "Quel numéro d'urgence permet d'appeler la police ?", "o": ["15", "17", "18", "112 uniquement"], "a": 1, "e": "Le 17 permet de joindre police ou gendarmerie. Le 112 est également le numéro européen d’urgence."}, {"t": "Vivre dans la société française", "q": "Concernant l'accès aux soins, quelle proposition est correcte ?", "o": ["On peut consulter un médecin et bénéficier des dispositifs de prise en charge selon sa situation", "Seuls les citoyens français peuvent être soignés", "Les urgences refusent toute personne", "La confidentialité n’existe pas"], "a": 0, "e": "L’accès aux soins est organisé selon la situation de la personne et les règles de couverture applicables."}, {"t": "Vivre dans la société française", "q": "À qui est accessible la contraception ?", "o": ["Aux personnes selon les conditions prévues par la loi et les dispositifs de santé", "Uniquement aux hommes", "Uniquement aux personnes mariées", "Uniquement aux étrangers"], "a": 0, "e": "La contraception est accessible selon les règles de santé publique et l’âge."}, {"t": "Vivre dans la société française", "q": "Qu’est-ce que le principe de confidentialité dans le domaine de la santé ?", "o": ["Les informations médicales d’un patient sont protégées et ne doivent pas être divulguées sans base légale", "Tout le monde peut consulter le dossier médical", "Le médecin doit publier les résultats", "La famille a toujours accès à tout"], "a": 0, "e": "Le secret médical et la confidentialité protègent les informations de santé."}, {"t": "Vivre dans la société française", "q": "L'inscription à l'Assurance maladie est :", "o": ["Possible selon les conditions de résidence et d’activité prévues par la loi", "Réservée aux propriétaires", "Interdite aux étrangers", "Automatique pour tous sans aucune condition"], "a": 0, "e": "La prise en charge par l’Assurance maladie dépend de conditions légales, notamment de résidence ou d’activité."}, {"t": "Vivre dans la société française", "q": "Qui peut demander un congé parental d'éducation ?", "o": ["Un salarié qui remplit les conditions prévues par le droit du travail", "Uniquement un employeur", "Uniquement un retraité", "Uniquement un étudiant"], "a": 0, "e": "Le congé parental d’éducation est ouvert aux salariés remplissant les conditions légales."}, {"t": "Vivre dans la société française", "q": "Quelles sont les affaires traitées par le conseil de prud'hommes ?", "o": ["Les litiges individuels entre salariés et employeurs liés au contrat de travail", "Les divorces", "Les élections présidentielles", "Les infractions pénales graves"], "a": 0, "e": "Le conseil de prud’hommes traite les litiges individuels du travail relevant de sa compétence."}, {"t": "Vivre dans la société française", "q": "Travailler sans être déclaré est :", "o": ["Illégal", "Obligatoire", "Toujours autorisé", "Une forme normale de contrat"], "a": 0, "e": "Le travail dissimulé est interdit et peut être sanctionné."}, {"t": "Vivre dans la société française", "q": "Quelle est la mission de France Travail ?", "o": ["Accompagner les personnes vers l’emploi et l’insertion professionnelle", "Rendre les décisions de justice", "Délivrer les passeports", "Organiser les élections"], "a": 0, "e": "France Travail accompagne les demandeurs d’emploi et les employeurs selon ses missions."}, {"t": "Vivre dans la société française", "q": "Dans une entreprise, le droit syndical permet :", "o": ["Aux salariés d’adhérer à un syndicat et d’exercer les droits syndicaux dans les conditions prévues", "D’interdire tout syndicat", "De licencier automatiquement un collègue", "De supprimer le contrat de travail"], "a": 0, "e": "Le droit syndical est garanti dans les conditions prévues par le droit du travail."}, {"t": "Vivre dans la société française", "q": "Dans une entreprise, le droit de grève autorise :", "o": ["La cessation collective et concertée du travail pour des revendications professionnelles, dans le cadre légal", "La destruction du matériel", "La violence", "L’absence sans aucune conséquence juridique"], "a": 0, "e": "Le droit de grève est une liberté encadrée."}, {"t": "Vivre dans la société française", "q": "Qu'est-ce que l'école maternelle ?", "o": ["Le premier niveau de l’école pour les jeunes enfants", "L’université", "Le lycée", "Une formation professionnelle"], "a": 0, "e": "L’école maternelle accueille les enfants avant l’école élémentaire."}, {"t": "Vivre dans la société française", "q": "Comment s'appelle le diplôme passé par les élèves à la fin du collège ?", "o": ["Diplôme national du brevet", "Baccalauréat", "CAP uniquement", "Licence"], "a": 0, "e": "Le diplôme national du brevet est passé à la fin du collège."}, {"t": "Vivre dans la société française", "q": "À quel âge commence l'instruction obligatoire des enfants ?", "o": ["3 ans", "5 ans", "6 ans", "10 ans"], "a": 0, "e": "L’instruction est obligatoire à partir de 3 ans."}, {"t": "Vivre dans la société française", "q": "Quel est l'âge de la majorité ?", "o": ["16 ans", "18 ans", "21 ans", "25 ans"], "a": 1, "e": "La majorité civile est fixée à 18 ans."}, {"t": "Vivre dans la société française", "q": "À l'école, un enfant en situation de handicap :", "o": ["Doit pouvoir bénéficier d’une scolarisation et d’un accompagnement adaptés selon ses besoins", "Doit automatiquement être exclu", "Ne peut jamais être scolarisé", "Doit obligatoirement rester à domicile"], "a": 0, "e": "Le principe d’inclusion scolaire prévoit des adaptations et accompagnements selon les besoins."}, {"t": "Vivre dans la société française", "q": "Quel numéro d'urgence permet d'appeler les pompiers ?", "o": ["15", "17", "18", "114"], "a": 2, "e": "Le 18 permet d’appeler les sapeurs-pompiers."}, {"t": "Vivre dans la société française", "q": "Quel numéro d'urgence permet d'appeler le SAMU ?", "o": ["15", "17", "18", "116"], "a": 0, "e": "Le 15 permet de joindre le SAMU."}, {"t": "Vivre dans la société française", "q": "Quel est le numéro européen d'urgence ?", "o": ["110", "112", "115", "119"], "a": 1, "e": "Le 112 est le numéro européen d’urgence."}];
+const SITS = [["Principes et valeurs de la République", "Vous travaillez au guichet d’une mairie. Vous souhaitez porter un signe religieux visible pendant votre service. Est-ce possible ?", ["Non, les agents publics doivent respecter la neutralité religieuse dans l’exercice de leurs fonctions.", "Oui, la liberté de religion s’applique sans limite au travail.", "Oui, si le maire donne son accord.", "Oui, uniquement pendant les fêtes religieuses."], "Le principe de neutralité interdit aux agents publics de manifester leurs convictions religieuses dans l’exercice de leurs fonctions. Cette obligation ne s’applique pas aux usagers du service public."], ["Principes et valeurs de la République", "Une personne portant un foulard se présente à l’accueil de la mairie. L’agent refuse de la recevoir pour ce motif. Que penser de ce refus ?", ["Il n’est pas justifié : les usagers d’un service public peuvent exprimer leurs convictions religieuses.", "Il est justifié par la laïcité, qui s’impose à tous les usagers.", "Il est justifié si l’agent n’a pas la même religion.", "Il est justifié si d’autres usagers se plaignent."], "La laïcité impose la neutralité à l’État et à ses agents, pas aux usagers. Ceux-ci peuvent manifester leurs convictions dans le respect de l’ordre public et du bon fonctionnement du service (par exemple, le visage doit rester découvert dans l’espace public)."], ["Principes et valeurs de la République", "Votre fille de 13 ans, élève dans un collège public, souhaite porter un voile en classe. Que prévoit la loi ?", ["Le port de signes religieux ostensibles est interdit aux élèves des écoles, collèges et lycées publics.", "Il est autorisé si les parents signent une autorisation.", "Il est interdit seulement pendant les examens.", "Il est autorisé dans tous les établissements scolaires."], "La loi du 15 mars 2004 interdit aux élèves des écoles, collèges et lycées publics le port de signes ou tenues par lesquels ils manifestent ostensiblement une appartenance religieuse."], ["Principes et valeurs de la République", "Une étudiante porte un voile pendant ses cours dans une université publique. Est-ce autorisé ?", ["Oui, la loi de 2004 ne s’applique pas aux étudiants de l’enseignement supérieur.", "Non, la loi de 2004 s’applique à tous les étudiants.", "Non, sauf dans les universités privées.", "Oui, seulement si elle est de nationalité étrangère."], "Les étudiants sont des usagers adultes du service public : ils peuvent exprimer leurs convictions, dans le respect de l’ordre public et du bon déroulement des enseignements."], ["Principes et valeurs de la République", "Un voisin vous explique que ses convictions religieuses l’autorisent à ne pas respecter certaines lois françaises. Que lui répondre ?", ["Nul ne peut se prévaloir de ses croyances pour s’affranchir des règles communes.", "Il a raison si sa religion est très ancienne.", "Il a raison si la loi concerne la vie familiale.", "Il a raison tant qu’il reste chez lui."], "La liberté de religion est garantie, mais les lois de la République s’appliquent à tous, quelles que soient leurs convictions."], ["Principes et valeurs de la République", "Lors d’un entretien d’embauche, le recruteur vous demande quelle est votre religion. Que pouvez-vous faire ?", ["Refuser de répondre : cette question est sans lien avec le poste et peut être discriminatoire.", "Répondre obligatoirement, sinon la candidature est annulée.", "Fournir un document prouvant votre religion.", "Répondre, car l’employeur peut choisir ses salariés selon leur religion."], "Le Code du travail interdit toute discrimination à l’embauche, notamment en raison des convictions religieuses. Vous pouvez saisir le Défenseur des droits."], ["Principes et valeurs de la République", "Un propriétaire refuse de vous louer un logement en raison de votre origine. Que pouvez-vous faire ?", ["Saisir le Défenseur des droits ou porter plainte : c’est une discrimination punie par la loi.", "Rien : le propriétaire peut choisir ses locataires selon leur origine.", "Proposer un loyer plus élevé pour obtenir le logement.", "Occuper le logement sans son accord."], "Refuser un logement en raison de l’origine est une discrimination interdite et sanctionnée pénalement."], ["Principes et valeurs de la République", "Votre conjoint veut vous empêcher d’ouvrir un compte bancaire à votre nom. Que dit la loi ?", ["Chaque époux peut ouvrir un compte bancaire personnel sans l’accord de l’autre.", "Il faut l’autorisation écrite du mari.", "Seul le conjoint qui travaille peut ouvrir un compte.", "Il faut l’accord du maire."], "Le Code civil permet à chacun des époux d’ouvrir un compte à son nom sans le consentement de l’autre. C’est une application de l’égalité entre les femmes et les hommes."], ["Principes et valeurs de la République", "Votre conjoint refuse que vous preniez un emploi. Que prévoit la loi ?", ["Chaque époux peut librement exercer une profession.", "Une femme mariée doit obtenir l’accord de son mari pour travailler.", "Seul le conjoint le plus âgé peut travailler.", "L’accord d’un juge est nécessaire."], "Depuis 1965, une femme mariée n’a plus besoin de l’autorisation de son mari pour travailler. Chaque époux exerce librement la profession de son choix."], ["Principes et valeurs de la République", "Une famille veut marier sa fille à un homme qu’elle n’a pas choisi. Que prévoit la loi ?", ["Le mariage exige le consentement libre de chacun des époux ; un mariage forcé peut être annulé.", "Le consentement des parents suffit.", "Le mariage est valable dès qu’une cérémonie religieuse a eu lieu.", "La fille ne peut refuser que si elle a plus de 25 ans."], "Il n’y a pas de mariage sans consentement libre. L’âge minimum pour se marier est de 18 ans. Les violences et contraintes exercées pour imposer un mariage sont punies."], ["Principes et valeurs de la République", "Votre ami souhaite changer de religion, mais sa famille s’y oppose. Que garantit la loi ?", ["La liberté de conscience, qui comprend le droit de changer de religion ou de n’en avoir aucune.", "La famille décide de la religion de ses membres adultes.", "Changer de religion nécessite une autorisation de la préfecture.", "Changer de religion est interdit après le mariage."], "La liberté de conscience est garantie à chacun : croire, ne pas croire ou changer de religion relève du choix personnel."], ["Principes et valeurs de la République", "Un collègue refuse de suivre les consignes de sa responsable parce que c’est une femme. Que penser de cette attitude ?", ["Elle est contraire à l’égalité entre les femmes et les hommes et peut être sanctionnée.", "Elle est acceptable si sa culture le justifie.", "Elle est acceptable dans le secteur privé.", "Elle est normale si la responsable est plus jeune."], "L’égalité entre les femmes et les hommes est un principe constitutionnel. Refuser l’autorité d’une personne en raison de son sexe est un comportement discriminatoire."], ["Principes et valeurs de la République", "À poste et compétences égaux, une collègue est moins payée que son collègue masculin. Que prévoit la loi ?", ["L’employeur doit assurer l’égalité de rémunération entre les femmes et les hommes pour un même travail.", "L’écart est autorisé si le salarié est marié.", "L’égalité salariale ne concerne que la fonction publique.", "L’écart est autorisé s’il figure dans le contrat."], "Le Code du travail impose l’égalité de rémunération pour un même travail ou un travail de valeur égale."], ["Principes et valeurs de la République", "Vous souhaitez créer une association sportive avec des voisins. Que faut-il savoir ?", ["La création d’une association est libre ; une déclaration en préfecture lui donne une existence juridique.", "Il faut l’autorisation préalable du ministre de l’Intérieur.", "Seuls les Français peuvent créer une association.", "Il faut verser un capital minimum."], "La liberté d’association (loi de 1901) permet à chacun, français ou étranger, de créer une association. La déclaration en préfecture, possible en ligne, lui permet d’agir en justice, de recevoir des subventions, etc."], ["Principes et valeurs de la République", "Vous voulez participer à une manifestation contre un projet de loi. Que devez-vous savoir ?", ["Manifester est une liberté ; la manifestation doit être déclarée au préalable et se dérouler pacifiquement.", "Seuls les élus peuvent manifester.", "Il est interdit de manifester contre un projet de loi.", "Dégrader des biens publics est permis pour se faire entendre."], "Les organisateurs déclarent la manifestation à la mairie ou à la préfecture. Les violences et dégradations sont punies par la loi."], ["Principes et valeurs de la République", "Sur un réseau social, une personne publie des insultes racistes visant votre voisin. Que pouvez-vous faire ?", ["Signaler le contenu, par exemple sur la plateforme PHAROS, et encourager votre voisin à porter plainte.", "Rien, la liberté d’expression autorise tous les propos.", "Répondre par d’autres insultes.", "Publier l’adresse de l’auteur pour qu’on le retrouve."], "L’injure à caractère raciste est un délit. La plateforme PHAROS (internet-signalement.gouv.fr) permet de signaler les contenus illicites en ligne."], ["Principes et valeurs de la République", "Un journal critique une décision du maire. Le maire peut-il faire interdire ce journal ?", ["Non, la liberté de la presse est garantie ; seuls les abus (diffamation, injure…) peuvent être poursuivis devant un juge.", "Oui, s’il estime l’article injuste.", "Oui, avec l’accord du conseil municipal.", "Oui, s’il est maire depuis plus de six ans."], "La liberté de la presse est protégée par la loi du 29 juillet 1881. C’est un juge, et non un élu, qui sanctionne d’éventuels abus."], ["Principes et valeurs de la République", "Vous souhaitez vous marier religieusement. Que devez-vous faire d’abord ?", ["Vous marier civilement à la mairie : le mariage civil doit précéder la cérémonie religieuse.", "Rien, le mariage religieux suffit en droit français.", "Obtenir l’accord du préfet.", "Faire enregistrer le mariage religieux au consulat."], "Seul le mariage civil a des effets juridiques en France. Un ministre du culte ne doit pas célébrer un mariage religieux avant le mariage civil."], ["Principes et valeurs de la République", "Pendant une campagne électorale, une personne propose de l’argent à un électeur pour qu’il vote pour un candidat. Que dit la loi ?", ["C’est interdit : le vote doit être libre, et acheter un vote est un délit.", "C’est autorisé si la somme est faible.", "C’est autorisé pour les élections locales.", "C’est autorisé si le candidat est d’accord."], "Le Code électoral punit le fait d’acheter ou de vendre un vote. Le suffrage est libre et secret."], ["Principes et valeurs de la République", "Dans un bureau de vote, un homme veut entrer dans l’isoloir avec son épouse pour vérifier son choix. Est-ce permis ?", ["Non, le vote est personnel et secret.", "Oui, s’il est le chef de famille.", "Oui, si elle vote pour la première fois.", "Oui, si le président du bureau l’accepte."], "Chaque électeur vote seul dans l’isoloir. Seul un électeur en situation de handicap peut se faire assister par la personne de son choix."], ["Principes et valeurs de la République", "À l’hôpital public, un patient exige d’être soigné par un médecin d’un autre sexe ou d’une autre religion, alors que cela perturbe le service. Que prévoit la règle ?", ["Les usagers ne peuvent pas récuser un agent public en raison de son sexe ou de sa religion.", "L’hôpital doit toujours satisfaire cette demande.", "La demande doit être acceptée si un proche l’exige.", "Le patient peut exiger un remboursement de ses soins."], "Le libre choix du praticien existe, mais il ne permet pas de récuser un agent pour des motifs religieux ou de sexe, ni de perturber le fonctionnement du service, en particulier en urgence."], ["Principes et valeurs de la République", "Votre fils, élève de primaire, doit suivre des cours de natation. Pouvez-vous l’en dispenser pour des raisons religieuses ?", ["Non, les enseignements obligatoires s’imposent à tous les élèves ; seule une raison médicale peut justifier une dispense.", "Oui, sur simple lettre des parents.", "Oui, si l’enfant a plus de 8 ans.", "Oui, si un autre élève est déjà dispensé."], "La natation fait partie des enseignements obligatoires. Les convictions des parents ne permettent pas d’en dispenser l’enfant."], ["Principes et valeurs de la République", "Un commerçant refuse de servir une cliente en raison de sa couleur de peau. Comment qualifier ce comportement ?", ["C’est une discrimination punie par la loi.", "C’est un droit du commerçant.", "C’est autorisé dans les petits commerces.", "C’est autorisé si le commerçant affiche un panneau."], "Refuser de fournir un bien ou un service en raison de l’origine, de la couleur de peau ou de tout autre critère interdit est un délit."], ["Principes et valeurs de la République", "Lors d’une cérémonie officielle du 11 novembre, La Marseillaise est jouée. Quelle attitude est attendue ?", ["Se tenir debout et rester silencieux en signe de respect.", "Continuer à discuter avec ses voisins.", "Quitter la cérémonie.", "Siffler l’hymne pour exprimer son opinion."], "La Marseillaise est un symbole de la République. Outrager l’hymne ou le drapeau lors d’une manifestation organisée par les autorités publiques est un délit."], ["Principes et valeurs de la République", "Vous entendez des propos homophobes visant un collègue sur votre lieu de travail. Que dit la loi ?", ["Les injures et discriminations fondées sur l’orientation sexuelle sont interdites et peuvent être sanctionnées.", "Ces propos relèvent de la vie privée et ne sont jamais sanctionnés.", "Ils sont autorisés s’ils sont dits sur le ton de l’humour.", "Ils sont autorisés en dehors des heures de travail."], "L’orientation sexuelle fait partie des critères de discrimination interdits. L’injure homophobe est punie par la loi."], ["Principes et valeurs de la République", "Un parent exige que sa fille ne soit pas assise à côté d’un garçon en classe. Que répondra l’école publique ?", ["La mixité est la règle à l’école publique ; filles et garçons suivent ensemble les mêmes enseignements.", "L’école doit créer des classes séparées.", "L’école doit accepter si la demande est écrite.", "La fille doit être inscrite dans une autre école publique."], "La mixité et l’égalité entre filles et garçons sont des principes de l’école de la République."], ["Droits et devoirs", "Vous recevez une amende que vous estimez injustifiée. Que faire ?", ["La contester dans le délai et selon la procédure indiqués sur l’avis.", "L’ignorer, elle sera annulée automatiquement.", "Ne pas la payer et changer d’adresse.", "Envoyer un courrier d’insultes au service."], "Toute décision peut être contestée par les voies prévues. Une amende ignorée peut être majorée."], ["Droits et devoirs", "Lors d’un contrôle d’identité, un policier vous demande vos papiers. Quelle est la bonne attitude ?", ["Rester calme, présenter un justificatif d’identité et, si vous contestez le contrôle, le faire ensuite par les voies prévues.", "Refuser et partir.", "Insulter le policier en le filmant.", "Lui proposer de l’argent pour éviter le contrôle."], "Un étranger doit pouvoir présenter les documents l’autorisant à séjourner en France. Un comportement abusif peut être signalé à l’IGPN, à l’IGGN ou au Défenseur des droits."], ["Droits et devoirs", "Vous êtes témoin d’une agression violente dans la rue. Que devez-vous faire ?", ["Alerter la police ou les secours (17 ou 112) et, si possible, porter assistance sans vous mettre en danger.", "Partir, car cela ne vous regarde pas.", "Filmer la scène et la publier sans prévenir personne.", "Attendre le lendemain pour en parler à la mairie."], "S’abstenir de porter secours à une personne en danger, alors qu’on pouvait le faire sans risque, est un délit (non-assistance à personne en danger)."], ["Droits et devoirs", "Votre voisine vous confie que son conjoint la frappe. Quel numéro peut-elle appeler pour être écoutée et orientée ?", ["Le 3919", "Le 3615", "Le 118 218", "Le 36 30"], "Le 3919 est le numéro national d’écoute pour les femmes victimes de violences : gratuit, anonyme, ouvert 24 h/24. En cas de danger immédiat, il faut appeler le 17 ou le 112, ou envoyer un SMS au 114."], ["Droits et devoirs", "Votre employeur vous propose de travailler sans contrat ni bulletin de salaire, payé en espèces. Que faut-il savoir ?", ["C’est du travail dissimulé, interdit : vous n’êtes ni déclaré ni protégé (retraite, assurance maladie, chômage).", "C’est légal si vous êtes d’accord.", "C’est légal pour les emplois de moins de six mois.", "C’est légal si le salaire dépasse le SMIC."], "Le travail dissimulé est sanctionné. L’inspection du travail peut être saisie."], ["Droits et devoirs", "Vous pensez avoir été licencié sans motif valable. Quelle juridiction pouvez-vous saisir ?", ["Le conseil de prud’hommes", "Le tribunal de commerce", "La cour d’assises", "Le Conseil constitutionnel"], "Le conseil de prud’hommes juge les litiges individuels entre salariés et employeurs du secteur privé."], ["Droits et devoirs", "Vous n’avez pas les moyens de payer un avocat pour défendre vos droits en justice. Que pouvez-vous demander ?", ["L’aide juridictionnelle, qui prend en charge tout ou partie des frais selon vos ressources.", "Un prêt à la mairie.", "L’annulation du procès.", "Que la partie adverse paie votre avocat dans tous les cas."], "L’aide juridictionnelle garantit l’accès à la justice aux personnes aux revenus modestes."], ["Droits et devoirs", "Vos revenus sont faibles et vous pensez ne pas être imposable. Devez-vous déclarer vos revenus ?", ["Oui, la déclaration de revenus est annuelle et obligatoire, même si aucun impôt n’est dû.", "Non, seules les personnes imposables déclarent leurs revenus.", "Non, les étrangers ne déclarent jamais leurs revenus.", "Seulement si votre employeur vous le demande."], "La déclaration permet aussi d’obtenir un avis de non-imposition, souvent demandé pour les aides sociales ou le logement."], ["Droits et devoirs", "Votre enfant a 4 ans. Que prévoit la loi ?", ["Il doit être instruit : l’instruction est obligatoire de 3 à 16 ans.", "L’école ne devient obligatoire qu’à 6 ans.", "L’instruction est facultative avant 10 ans.", "Seuls les enfants français doivent être instruits."], "Depuis 2019, l’instruction est obligatoire dès 3 ans. L’instruction en famille est soumise à autorisation."], ["Droits et devoirs", "Votre fils de 17 ans veut quitter l’école et ne rien faire. Que prévoit la loi ?", ["Jusqu’à 18 ans, il doit être en formation : études, apprentissage, emploi, service civique ou dispositif d’insertion.", "Il est libre de tout arrêter dès 14 ans.", "Il doit obligatoirement faire un service militaire.", "Il doit demander l’autorisation du maire."], "Depuis 2020, l’obligation de formation s’applique aux jeunes de 16 à 18 ans."], ["Droits et devoirs", "Vous trouvez dans la rue un portefeuille contenant de l’argent. Que devez-vous faire ?", ["Le déposer au service des objets trouvés, au commissariat ou à la gendarmerie.", "Garder l’argent et jeter le portefeuille.", "Le garder, car ce qui est trouvé appartient à celui qui le trouve.", "Le donner à un passant."], "Conserver un objet trouvé en sachant à qui il appartient, ou sans chercher à le rendre, peut être assimilé à un vol."], ["Droits et devoirs", "Vous achetez une voiture. Quelle obligation devez-vous respecter avant de rouler ?", ["L’assurer, au minimum en responsabilité civile.", "Obtenir l’accord du maire.", "La faire contrôler par la police.", "Aucune, si vous avez le permis de conduire."], "L’assurance responsabilité civile est obligatoire pour tout véhicule. Il faut aussi un certificat d’immatriculation (carte grise) à votre nom."], ["Droits et devoirs", "Un voisin affirme qu’une fessée est un droit des parents pour éduquer un enfant. Que dit la loi ?", ["L’autorité parentale s’exerce sans violences physiques ou psychologiques.", "Les parents peuvent frapper leurs enfants s’ils le jugent utile.", "Seul le père peut punir physiquement les enfants.", "Les violences sont permises jusqu’à 10 ans."], "Depuis la loi du 10 juillet 2019, les violences éducatives sont interdites. Le 119 permet de signaler un enfant en danger."], ["Droits et devoirs", "Une famille envisage de faire exciser sa fille lors d’un séjour dans son pays d’origine. Que prévoit la loi française ?", ["C’est un crime, puni en France même si l’acte est commis à l’étranger sur une mineure résidant habituellement en France.", "C’est autorisé si c’est une tradition familiale.", "C’est autorisé en dehors du territoire français.", "C’est une infraction punie d’une simple amende."], "Les mutilations sexuelles sont des violences graves. Toute personne qui a connaissance d’un risque peut alerter le 119 ou le 17."], ["Droits et devoirs", "Votre enfant est né en 2024 et vous voulez l’inscrire à la crèche. Que faut-il savoir sur les vaccins ?", ["Les vaccinations obligatoires doivent être à jour pour l’entrée en collectivité.", "Les vaccins sont facultatifs pour tous les enfants.", "Seuls les enfants français doivent être vaccinés.", "La crèche vaccine les enfants sans l’accord des parents."], "Onze vaccinations sont obligatoires pour les enfants nés depuis le 1er janvier 2018. Elles conditionnent l’entrée en crèche et à l’école."], ["Droits et devoirs", "Votre propriétaire veut vous expulser en changeant lui-même les serrures pendant votre absence. Est-ce légal ?", ["Non, une expulsion nécessite une décision de justice et l’intervention d’un commissaire de justice.", "Oui, s’il vous a prévenu par SMS.", "Oui, si le loyer a un jour de retard.", "Oui, s’il est accompagné d’un témoin."], "Le domicile est protégé. Expulser soi-même un locataire est un délit. Les expulsions sont en outre suspendues pendant la trêve hivernale (du 1er novembre au 31 mars)."], ["Droits et devoirs", "Vous voulez vous débarrasser d’un vieux canapé. Que faites-vous ?", ["Le déposer en déchetterie ou utiliser la collecte des encombrants de votre commune.", "Le laisser sur le trottoir à n’importe quel moment.", "Le brûler dans la cour de l’immeuble.", "Le déposer dans un terrain vague."], "Le dépôt sauvage de déchets est puni d’une amende. Respecter les règles de collecte fait partie des devoirs de chacun."], ["Droits et devoirs", "Votre voisin fait régulièrement beaucoup de bruit la nuit. Quelle démarche est appropriée ?", ["Lui en parler calmement, puis, si cela continue, recourir à un conciliateur de justice ou appeler la police en cas de tapage nocturne.", "Faire encore plus de bruit pour vous venger.", "Couper l’électricité de son logement.", "Forcer sa porte pour lui parler."], "Le tapage nocturne est une infraction. Le conciliateur de justice, gratuit, aide à régler les conflits de voisinage à l’amiable."], ["Droits et devoirs", "Vous êtes placé en garde à vue. Quels droits avez-vous ?", ["Être assisté par un avocat, faire prévenir un proche et garder le silence.", "Rentrer chez vous quand vous le souhaitez.", "Choisir le policier qui vous interroge.", "Aucun droit tant que l’enquête dure."], "La personne gardée à vue a aussi droit à un médecin et, si besoin, à un interprète."], ["Droits et devoirs", "Vous pensez avoir été victime d’une discrimination de la part d’une administration. Qui pouvez-vous saisir gratuitement ?", ["Le Défenseur des droits", "Le Président de la République directement", "Le Conseil constitutionnel", "La Cour de justice de l’Union européenne"], "Le Défenseur des droits est une autorité indépendante. Sa saisine est gratuite, en ligne, par courrier ou auprès de ses délégués."], ["Droits et devoirs", "Un homme marié en France souhaite épouser une deuxième femme. Est-ce possible ?", ["Non, on ne peut pas se remarier avant la dissolution du premier mariage.", "Oui, si sa première épouse est d’accord.", "Oui, si le second mariage a lieu à l’étranger.", "Oui, s’il a les moyens financiers."], "La polygamie est interdite en France. Elle empêche aussi la délivrance d’une carte de résident."], ["Droits et devoirs", "Vous employez une personne quelques heures par semaine pour garder vos enfants. Que devez-vous faire ?", ["La déclarer, par exemple via le CESU ou Pajemploi.", "Rien, si vous la payez en espèces.", "La déclarer seulement si elle est française.", "La déclarer seulement après cinq ans."], "Un emploi à domicile non déclaré est du travail dissimulé. La déclaration protège la personne employée et ouvre droit à des aides."], ["Droits et devoirs", "Un salarié du secteur privé fait grève avec ses collègues pour défendre leurs revendications. Que prévoit la loi ?", ["Il exerce un droit constitutionnel : il n’est pas payé pendant la grève mais ne peut pas être sanctionné pour ce motif.", "Il est automatiquement licencié.", "Il doit rembourser son salaire du mois.", "Il doit d’abord obtenir l’accord écrit de son employeur."], "Le droit de grève est reconnu par le préambule de la Constitution de 1946. Il s’exerce dans le cadre des lois qui le réglementent."], ["Droits et devoirs", "Vous devenez père. Votre employeur affirme que vous n’avez droit à aucun congé. A-t-il raison ?", ["Non, le père ou le second parent salarié a droit à un congé de paternité et d’accueil de l’enfant.", "Oui, seule la mère a droit à un congé.", "Oui, sauf si vous avez plus de dix ans d’ancienneté.", "Oui, ce congé dépend uniquement de la volonté de l’employeur."], "Le congé de paternité et d’accueil de l’enfant est un droit pour le salarié ; une partie en est obligatoire."], ["Droits et devoirs", "Vous avez un accident de voiture sans blessé avec un autre conducteur. Que faites-vous ?", ["Remplir ensemble un constat amiable et le transmettre à votre assureur.", "Partir sans rien dire.", "Exiger que l’autre conducteur vous remette son permis.", "Appeler les pompiers pour établir les responsabilités."], "Quitter les lieux d’un accident pour échapper à sa responsabilité est un délit de fuite."], ["Droits et devoirs", "Votre titre de séjour expire dans quelques semaines. Que devez-vous faire ?", ["Demander son renouvellement avant l’expiration, dans les délais indiqués par la préfecture.", "Attendre son expiration pour faire la démarche.", "Continuer à utiliser l’ancien titre sans démarche.", "Emprunter le titre d’un proche."], "La demande de renouvellement se fait le plus souvent en ligne, sur le site de l’ANEF. Un retard peut créer une rupture de droits (travail, prestations)."]];
+const TH = {P:"Principes et valeurs de la République",I:"Système institutionnel et politique",D:"Droits et devoirs",H:"Histoire, géographie et culture",V:"Vivre dans la société française"};
+// Répartition appliquée : 28 questions de connaissance + 12 mises en situation
+const PLAN_KN = {P:5,I:6,D:5,H:8,V:4};
+const PLAN_SIT = {P:6,D:6};
+const DURATION = 45*60;
+const LETTERS = "ABCD";
+
+// Pool unifié : id, type, thème, question, options (bonne réponse en 0), explication
+const POOL = {};
+KNOW.forEach((q,i)=>{const o=[q.o[q.a],...q.o.filter((_,j)=>j!==q.a)];POOL['k'+i]={id:'k'+i,type:'kn',t:q.t,q:q.q,o,e:q.e};});
+SITS.forEach((s,i)=>{POOL['s'+i]={id:'s'+i,type:'sit',t:s[0],q:s[1],o:s[2],e:s[3]};});
+const themeKey = name => Object.keys(TH).find(k=>TH[k]===name);
+
+// Stockage local (propre à ce navigateur)
+const KEY='ec-sim-v1';
+function blank(){return {history:[],errors:[],qs:{}};}
+function load(){try{const v=JSON.parse(localStorage.getItem(KEY));if(v&&Array.isArray(v.history))return {history:v.history,errors:Array.isArray(v.errors)?v.errors:[],qs:(v.qs&&typeof v.qs==='object')?v.qs:{}};}catch(e){}return blank();}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){}}
+let store = load();
+
+const $ = id=>document.getElementById(id);
+const shuffle = a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+
+let S=null, tick=null, pickN=10;
+
+// Catégories suivies : les 5 thématiques (connaissance) + les mises en situation
+const CATS=[
+  {k:'P',label:TH.P,w:5},{k:'I',label:TH.I,w:6},{k:'D',label:TH.D,w:5},
+  {k:'H',label:TH.H,w:8},{k:'V',label:TH.V,w:4},{k:'S',label:'Mises en situation',w:12}];
+const catOf=q=>q.type==='sit'?'S':themeKey(q.t);
+const catLabel=k=>CATS.find(c=>c.k===k).label;
+const MIN_ANS=8; // réponses minimales avant de juger un thème
+
+// Une réponse : [nb de réponses, nb de bonnes, dernière réponse juste (1/0), date]
+function record(q,ok){
+  const r=store.qs[q.id]||[0,0,0,0];
+  r[0]++;if(ok)r[1]++;r[2]=ok?1:0;r[3]=Date.now();store.qs[q.id]=r;
+  const err=new Set(store.errors);if(ok)err.delete(q.id);else err.add(q.id);store.errors=[...err];
+  save();
+}
+function catStats(k){
+  const pool=Object.values(POOL).filter(q=>catOf(q)===k);
+  let n=0,ok=0,seen=0,mastered=0,wrongNow=0;
+  pool.forEach(q=>{const r=store.qs[q.id];if(!r)return;seen++;n+=r[0];ok+=r[1];if(r[2])mastered++;else wrongNow++;});
+  const rate=n?ok/n:null;
+  let lvl='none';
+  if(n>=MIN_ANS)lvl=rate>=.85?'strong':rate>=.7?'ok':'weak';
+  return {k,label:catLabel(k),total:pool.length,n,ok,seen,mastered,wrongNow,rate,lvl};
+}
+const LVL={strong:'Point fort',ok:'À consolider',weak:'Point faible',none:'Pas assez de réponses'};
+const pct=x=>Math.round(100*x)+' %';
+// Tri : points faibles d'abord, puis thèmes peu explorés, puis le reste
+function ranked(){
+  const order={weak:0,none:1,ok:2,strong:3};
+  return CATS.map(c=>catStats(c.k)).sort((a,b)=>order[a.lvl]-order[b.lvl]||((a.rate===null?1:a.rate)-(b.rate===null?1:b.rate))||a.seen/a.total-b.seen/b.total);
+}
+function priorities(){
+  return ranked().filter(c=>c.lvl!=='strong').slice(0,3);
+}
+function why(c){
+  if(c.lvl==='none')return c.n?`seulement ${c.n} réponse${c.n>1?'s':''} pour l’instant, il faut plus de données`:'jamais travaillé';
+  return `${pct(c.rate)} de bonnes réponses, ${c.wrongNow} question${c.wrongNow>1?'s':''} encore ratée${c.wrongNow>1?'s':''}`;
+}
+function estimate(){
+  const st=CATS.map(c=>({c,s:catStats(c.k)}));
+  if(st.some(x=>x.s.n<MIN_ANS))return null;
+  return st.reduce((a,x)=>a+x.c.w*x.s.rate,0);
+}
+
+function buildExam(){
+  const pick=[];
+  for(const [k,n] of Object.entries(PLAN_KN)){pick.push(...shuffle(Object.values(POOL).filter(q=>q.type==='kn'&&q.t===TH[k])).slice(0,n));}
+  for(const [k,n] of Object.entries(PLAN_SIT)){pick.push(...shuffle(Object.values(POOL).filter(q=>q.type==='sit'&&q.t===TH[k])).slice(0,n));}
+  return shuffle(pick);
+}
+function buildTheme(k,n){
+  const pool=Object.values(POOL).filter(q=>catOf(q)===k);
+  const prio=q=>{const r=store.qs[q.id];if(!r)return 1;if(!r[2])return 0;return 2+r[1]/r[0];};
+  const sorted=shuffle(pool).sort((a,b)=>prio(a)-prio(b));
+  return shuffle(n?sorted.slice(0,n):sorted);
+}
+function start(mode,opt){
+  let qs;
+  if(mode==='exam'||mode==='train') qs=buildExam();
+  else if(mode==='sit') qs=shuffle(Object.values(POOL).filter(q=>q.type==='sit')).slice(0,20);
+  else if(mode==='theme') qs=buildTheme(opt,pickN);
+  else qs=shuffle(store.errors.map(id=>POOL[id]).filter(Boolean)).slice(0,40);
+  if(!qs.length) return;
+  S={mode,cat:opt,immediate:mode!=='exam',qs:qs.map(q=>({...q,order:shuffle([0,1,2,3])})),ans:Array(qs.length).fill(null),checked:Array(qs.length).fill(false),i:0,t0:Date.now(),done:false};
+  show('quiz');
+  buildStrip();
+  $('timer').classList.toggle('hidden',mode!=='exam');
+  $('legend').innerHTML=S.immediate?'<span><i style="background:var(--good)"></i>Bonne réponse</span><span><i style="background:var(--bad)"></i>Erreur</span><span><i style="background:var(--cell)"></i>À faire</span>':'<span><i style="background:var(--accent)"></i>Connaissance répondue</span><span><i style="background:var(--sit)"></i>Mise en situation répondue</span><span><i style="background:var(--cell)"></i>Sans réponse</span>';
+  clearInterval(tick);
+  if(mode==='exam'){tick=setInterval(updTimer,500);updTimer();}
+  render();
+}
+function show(id){['home','pick','stats','quiz','results'].forEach(s=>$(s).classList.toggle('hidden',s!==id));window.scrollTo(0,0);}
+
+function buildStrip(){
+  const st=$('strip');st.innerHTML='';
+  st.style.gridTemplateColumns=`repeat(${Math.min(20,S.qs.length)},1fr)`;
+  S.qs.forEach((q,i)=>{const b=document.createElement('button');b.className=q.type==='sit'?'sit':'';b.setAttribute('aria-label','Question '+(i+1));b.onclick=()=>{S.i=i;render();};st.appendChild(b);});
+}
+function updStrip(){
+  [...$('strip').children].forEach((b,i)=>{
+    b.classList.toggle('cur',i===S.i);
+    const a=S.ans[i];
+    if(S.immediate&&S.checked[i]){b.classList.remove('done');b.classList.toggle('right',a===0);b.classList.toggle('wrong',a!==0);}
+    else b.classList.toggle('done',a!==null);
+  });
+}
+function updTimer(){
+  const left=Math.max(0,DURATION-Math.floor((Date.now()-S.t0)/1000));
+  const m=Math.floor(left/60),s=left%60;
+  $('timer').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  $('timer').classList.toggle('low',left<=300);
+  if(left===0&&!S.done){finish(true);}
+}
+function render(){
+  const q=S.qs[S.i], n=S.qs.length;
+  $('count').textContent=`Question ${S.i+1} sur ${n}`;
+  const tag=$('qtype');tag.textContent=q.type==='sit'?'Mise en situation':'Connaissance';tag.className='tag '+(q.type==='sit'?'sit':'kn');
+  $('qtheme').textContent=q.t;
+  $('qtext').textContent=q.q;
+  const box=$('opts');box.innerHTML='';
+  const locked=S.immediate&&S.checked[S.i];
+  q.order.forEach((oi,pos)=>{
+    const b=document.createElement('button');
+    b.className='opt';b.setAttribute('role','radio');
+    b.setAttribute('aria-checked',S.ans[S.i]===oi?'true':'false');
+    b.innerHTML=`<span class="k">${LETTERS[pos]}</span><span></span>`;
+    b.lastChild.textContent=q.o[oi];
+    if(locked){b.disabled=true;if(oi===0)b.classList.add('is-right');else if(S.ans[S.i]===oi)b.classList.add('is-wrong');}
+    b.onclick=()=>choose(oi);
+    box.appendChild(b);
+  });
+  const ex=$('explain');
+  if(locked){const ok=S.ans[S.i]===0;ex.innerHTML=`<b class="${ok?'ok':'ko'}">${ok?'Bonne réponse.':'Mauvaise réponse. La bonne réponse est '+LETTERS[q.order.indexOf(0)]+'.'}</b>`;ex.append(q.e);ex.classList.remove('hidden');}
+  else ex.classList.add('hidden');
+  $('prevBtn').disabled=S.i===0;
+  const last=S.i===n-1;
+  $('nextBtn').textContent=last?(S.mode==='exam'?'Terminer l’examen':'Voir le bilan'):'Suivante';
+  updStrip();
+}
+function choose(oi){
+  if(S.done)return;
+  if(S.immediate&&S.checked[S.i])return;
+  S.ans[S.i]=oi;
+  if(S.immediate){S.checked[S.i]=true;record(S.qs[S.i],oi===0);}
+  render();
+}
+function next(){
+  if(S.i<S.qs.length-1){S.i++;render();window.scrollTo({top:0});return;}
+  const missing=S.ans.filter(a=>a===null).length;
+  if(missing) ask(`Il reste ${missing} question${missing>1?'s':''} sans réponse. Une question sans réponse compte comme une erreur. Terminer quand même ?`,()=>finish(false));
+  else finish(false);
+}
+function ask(text,yes){$('confirmText').textContent=text;const d=$('confirm');if(typeof d.showModal!=='function'){if(window.confirm(text))yes();return;}$('cYes').onclick=()=>{d.close();yes();};$('cNo').onclick=()=>d.close();d.showModal();}
+
+function finish(timeout){
+  S.done=true;clearInterval(tick);
+  const n=S.qs.length;
+  const res=S.qs.map((q,i)=>({q,a:S.ans[i],ok:S.ans[i]===0}));
+  const score=res.filter(r=>r.ok).length;
+  // En examen blanc, les réponses sont enregistrées à la fin (en entraînement, à chaque question)
+  if(S.mode==='exam'){
+    res.forEach(r=>{if(r.a!==null)record(r.q,r.ok);});
+    const err=new Set(store.errors);res.forEach(r=>{if(r.a===null)err.add(r.q.id);});store.errors=[...err];
+  }
+  const secs=Math.floor((Date.now()-S.t0)/1000);
+  if(S.mode==='exam'){store.history.unshift({d:Date.now(),s:score,sec:Math.min(secs,DURATION)});store.history=store.history.slice(0,20);}
+  save();
+
+  const pass=S.mode==='exam'||S.mode==='train'?score>=32:null;
+  $('score').innerHTML=`${score}<small>/${n}</small>`;
+  const v=$('verdict');
+  if(pass===null){v.textContent=score===n?'Sans faute':'Bilan de la série';v.className='verdict';}
+  else{v.textContent=pass?'Réussi':'À retravailler';v.className='verdict '+(pass?'ok':'ko');}
+  const mm=Math.floor(Math.min(secs,DURATION)/60), ss=Math.min(secs,DURATION)%60;
+  $('resultInfo').textContent=(timeout?'Temps écoulé. ':'')+(S.mode==='exam'?`Durée : ${mm} min ${String(ss).padStart(2,'0')} s. `:'')+(pass===null?'':pass?'Visez régulièrement 36/40 pour garder une marge le jour de l’examen.':`Il manque ${32-score} bonne${32-score>1?'s':''} réponse${32-score>1?'s':''} pour atteindre le seuil de 32/40.`);
+
+  // Bilan par catégorie
+  const groups={};
+  res.forEach(r=>{const g=r.q.type==='sit'?'Mises en situation':r.q.t;(groups[g]=groups[g]||{ok:0,n:0});groups[g].n++;if(r.ok)groups[g].ok++;});
+  const bd=$('breakdown');bd.innerHTML='';
+  const order=[TH.P,TH.I,TH.D,TH.H,TH.V,'Mises en situation'];
+  order.filter(g=>groups[g]).forEach(g=>{const x=groups[g];const d=document.createElement('div');d.className='row';d.innerHTML=`<span></span><span class="n">${x.ok}/${x.n}</span><div class="track"><span style="width:${Math.round(100*x.ok/x.n)}%;${g==='Mises en situation'?'background:var(--sit)':''}"></span></div>`;d.firstChild.textContent=g;bd.appendChild(d);});
+
+  // Conseil : catégorie la plus faible de cette série
+  const rt=$('resultTip');
+  const weakest=Object.entries(groups).map(([g,x])=>({g,x,r:x.ok/x.n})).filter(o=>o.r<.8).sort((a,b)=>a.r-b.r)[0];
+  if(weakest){
+    const k=weakest.g==='Mises en situation'?'S':themeKey(weakest.g);
+    rt.innerHTML='<p></p><button class="btn">S’entraîner sur ce thème</button>';
+    rt.firstChild.textContent=`Point le plus faible de cette série : ${weakest.g} (${weakest.x.ok}/${weakest.x.n}).`;
+    rt.lastChild.onclick=()=>start('theme',k);
+    rt.classList.remove('hidden');
+  } else rt.classList.add('hidden');
+  S.res=res;renderReview('wrong');
+  document.querySelectorAll('.filters .chip').forEach(c=>c.setAttribute('aria-pressed',c.dataset.f==='wrong'?'true':'false'));
+  $('againBtn').textContent=S.mode==='exam'?'Nouvel examen blanc':S.mode==='errors'?'Revoir les erreurs restantes':S.mode==='theme'?'Nouvelle série sur ce thème':'Nouvelle série';
+  show('results');
+  renderHome();
+}
+function renderReview(f){
+  const list=$('reviewList');list.innerHTML='';
+  const items=S.res.map((r,i)=>({...r,i})).filter(r=>f==='all'||!r.ok);
+  if(!items.length){list.innerHTML='<p>Aucune erreur. Bravo !</p>';return;}
+  items.forEach(r=>{
+    const d=document.createElement('div');d.className='ritem'+(r.ok?' right':'');
+    const q=document.createElement('div');q.className='q';q.textContent=`${r.i+1}. ${r.q.q}`;d.appendChild(q);
+    if(!r.ok){const y=document.createElement('div');y.className='you';y.textContent=r.a===null?'Sans réponse':'Votre réponse : '+r.q.o[r.a];d.appendChild(y);}
+    const g=document.createElement('div');g.className='good';g.textContent='Bonne réponse : '+r.q.o[0];d.appendChild(g);
+    const w=document.createElement('div');w.className='why';w.textContent=r.q.e;d.appendChild(w);
+    list.appendChild(d);
+  });
+}
+function catButton(c,onclick,btnLabel){
+  const b=document.createElement('button');b.className='cat';
+  const shown=c.rate===null?'–':pct(c.rate);
+  b.innerHTML=`<strong></strong><span class="pct">${shown}</span>
+    <div class="track" title="Gris : part des questions vues. Couleur : taux de bonnes réponses"><span class="cov" style="width:${Math.round(100*c.seen/c.total)}%"></span><span class="rate" style="width:${c.rate===null?0:Math.round(100*c.rate)}%;background:var(--${c.lvl==='weak'?'bad':c.lvl==='strong'?'good':'accent'})"></span></div>
+    <div class="meta"><span class="lvl ${c.lvl}">${LVL[c.lvl]}</span><span>${c.seen}/${c.total} questions vues</span>${c.wrongNow?`<span>${c.wrongNow} à revoir</span>`:''}${btnLabel?`<span style="margin-left:auto;color:var(--accent);font-weight:700">${btnLabel}</span>`:''}</div>`;
+  b.querySelector('strong').textContent=c.label;
+  b.onclick=onclick;return b;
+}
+function renderPick(){
+  const l=$('pickList');l.innerHTML='';
+  ranked().forEach(c=>l.appendChild(catButton(c,()=>start('theme',c.k),'Commencer')));
+}
+function chartSVG(h){
+  const pts=h.slice(0,20).reverse(); if(pts.length<2)return '';
+  const W=600,H=240,pl=46,pr=12,pt=14,pb=14;
+  const x=i=>pl+(W-pl-pr)*i/(pts.length-1), y=v=>pt+(H-pt-pb)*(1-v/40);
+  const line=pts.map((p,i)=>`${x(i).toFixed(1)},${y(p.s).toFixed(1)}`).join(' ');
+  const dots=pts.map((p,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(p.s).toFixed(1)}" r="7" fill="var(--${p.s>=32?'good':'bad'})"/>`).join('');
+  const ticks=[0,20,32,40].map(v=>`<text x="${pl-6}" y="${y(v)+7}" text-anchor="end" font-size="20" fill="var(--muted)">${v}</text>`).join('');
+  return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Évolution des scores aux examens blancs">
+    <line x1="${pl}" x2="${W-pr}" y1="${y(32)}" y2="${y(32)}" stroke="var(--good)" stroke-dasharray="5 5"/>
+    <line x1="${pl}" x2="${W-pr}" y1="${y(0)}" y2="${y(0)}" stroke="var(--line)"/>
+    ${ticks}<polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="4"/>${dots}</svg><p class="note" style="margin:6px 6px 4px">Du plus ancien au plus récent. Seuil de réussite (32/40) en pointillés.</p></div>`;
+}
+function renderStats(){
+  const body=$('statsBody');body.innerHTML='';
+  const all=Object.values(POOL), seen=all.filter(q=>store.qs[q.id]);
+  const n=seen.reduce((a,q)=>a+store.qs[q.id][0],0), ok=seen.reduce((a,q)=>a+store.qs[q.id][1],0);
+  if(!n){body.innerHTML='<p class="lead">Aucune réponse enregistrée pour l’instant. Faites un examen blanc ou une série d’entraînement : vos points forts et vos points faibles apparaîtront ici.</p>';return;}
+  const est=estimate();
+  const last5=store.history.slice(0,5);
+  const avg=last5.length?(last5.reduce((a,x)=>a+x.s,0)/last5.length):null;
+  const k=document.createElement('div');k.className='kpis';
+  k.innerHTML=`<div><b>${pct(ok/n)}</b><span>de bonnes réponses (${n} au total)</span></div>
+    <div><b>${seen.length}/${all.length}</b><span>questions déjà vues</span></div>
+    <div><b>${est!==null?'≈ '+Math.round(est)+'/40':avg!==null?avg.toFixed(1).replace('.',',')+'/40':'–'}</b><span>${est!==null?'score estimé selon vos résultats par thème':avg!==null?'moyenne des '+last5.length+' derniers examens':'faites un examen blanc'}</span></div>`;
+  body.appendChild(k);
+
+  const pr=priorities();
+  const p=document.createElement('div');p.className='prio';
+  if(pr.length){
+    p.innerHTML='<h2>À réviser en priorité</h2><ol></ol>';
+    pr.forEach(c=>{const li=document.createElement('li');li.innerHTML='<b></b> : <span></span>';li.firstChild.textContent=c.label;li.lastChild.textContent=why(c);p.querySelector('ol').appendChild(li);});
+    const b=document.createElement('button');b.className='btn main';b.textContent='S’entraîner sur '+(pr[0].k==='S'?'les mises en situation':'« '+pr[0].label+' »');b.onclick=()=>start('theme',pr[0].k);p.appendChild(b);
+  } else p.innerHTML='<h2>Tous les thèmes sont des points forts</h2><p>Continuez les examens blancs pour garder le rythme et viser 36/40 ou plus.</p>';
+  body.appendChild(p);
+
+  const h1=document.createElement('h2');h1.textContent='Résultats par thème';body.appendChild(h1);
+  const lg=document.createElement('p');lg.className='note';lg.style.marginTop='0';lg.textContent=`Barre grise : part des questions vues. Barre de couleur : taux de bonnes réponses. Un thème est jugé à partir de ${MIN_ANS} réponses ; point fort à partir de 85 %, point faible sous 70 %.`;body.appendChild(lg);
+  const cats=document.createElement('div');cats.className='cats';
+  ranked().forEach(c=>cats.appendChild(catButton(c,()=>start('theme',c.k),'S’entraîner')));
+  body.appendChild(cats);
+
+  if(store.history.length>=2){const h=document.createElement('h2');h.textContent='Évolution aux examens blancs';body.appendChild(h);body.insertAdjacentHTML('beforeend',chartSVG(store.history));}
+
+  const missed=seen.map(q=>({q,r:store.qs[q.id]})).filter(x=>x.r[0]-x.r[1]>0).sort((a,b)=>(a.r[2]-b.r[2])||((b.r[0]-b.r[1])-(a.r[0]-a.r[1]))).slice(0,8);
+  if(missed.length){
+    const h=document.createElement('h2');h.textContent='Questions les plus souvent ratées';body.appendChild(h);
+    missed.forEach(({q,r})=>{const d=document.createElement('div');d.className='miss';
+      d.innerHTML='<div class="cnt"></div><div class="q"></div><div class="good"></div>';
+      d.children[0].textContent=`Ratée ${r[0]-r[1]} fois sur ${r[0]}`+(r[2]?', réussie la dernière fois':'');
+      d.children[1].textContent=q.q;d.children[2].textContent='Bonne réponse : '+q.o[0];body.appendChild(d);});
+    if(store.errors.length){const b=document.createElement('button');b.className='btn main';b.style.marginTop='8px';b.textContent='Revoir mes erreurs';b.onclick=()=>start('errors');body.appendChild(b);}
+  }
+}
+function renderHome(){
+  const ne=store.errors.filter(id=>POOL[id]).length;
+  $('errBtn').disabled=!ne;
+  $('errInfo').textContent=ne?`${ne} question${ne>1?'s':''} à revoir, correction immédiate`:'Aucune erreur enregistrée pour l’instant';
+  // Conseil de révision sur l’accueil
+  const tip=$('homeTip'), pr=priorities()[0];
+  if(Object.keys(store.qs).length&&pr){
+    tip.innerHTML='<div><p><b></b></p><p class="muted"></p></div><button class="btn">S’entraîner</button>';
+    tip.querySelector('b').textContent='Priorité de révision : '+pr.label;
+    tip.querySelector('.muted').textContent=why(pr).replace(/^./,m=>m.toUpperCase())+'.';
+    tip.querySelector('button').onclick=()=>start('theme',pr.k);
+    tip.classList.remove('hidden');
+  } else tip.classList.add('hidden');
+  const h=$('history');
+  if(!store.history.length){h.innerHTML='';return;}
+  const rows=store.history.slice(0,8).map(x=>{const dt=new Date(x.d);return `<tr><td>${dt.toLocaleDateString('fr-FR')} à ${dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</td><td class="${x.s>=32?'ok':'ko'}">${x.s}/40</td><td>${Math.floor(x.sec/60)} min</td></tr>`;}).join('');
+  const best=Math.max(...store.history.map(x=>x.s));
+  h.innerHTML=`<h2>Vos derniers examens blancs</h2><p class="lead">Meilleur score : ${best}/40</p><table><thead><tr><th>Date</th><th>Score</th><th>Durée</th></tr></thead><tbody>${rows}</tbody></table><p style="margin-top:10px"><button class="linkbtn" id="resetBtn">Effacer l’historique, les erreurs et les statistiques</button></p>`;
+  $('resetBtn').onclick=()=>ask('Effacer l’historique, la liste des erreurs et toutes les statistiques de ce navigateur ?',()=>{store=blank();save();renderHome();});
+}
+
+document.querySelectorAll('.mode[data-mode]').forEach(b=>b.onclick=()=>start(b.dataset.mode));
+$('themeBtn').onclick=()=>{renderPick();show('pick');};
+$('statsBtn').onclick=()=>{renderStats();show('stats');};
+$('resStatsBtn').onclick=()=>{renderStats();show('stats');};
+document.querySelectorAll('[data-home]').forEach(b=>b.onclick=()=>{show('home');renderHome();});
+document.querySelectorAll('.sizes .chip').forEach(c=>c.onclick=()=>{pickN=+c.dataset.n;document.querySelectorAll('.sizes .chip').forEach(x=>x.setAttribute('aria-pressed',x===c?'true':'false'));});
+$('prevBtn').onclick=()=>{if(S.i>0){S.i--;render();}};
+$('nextBtn').onclick=next;
+$('quitBtn').onclick=()=>ask(S.immediate?'Quitter la série en cours ? Les réponses déjà corrigées restent comptées dans vos statistiques.':'Quitter l’examen en cours ? Vos réponses ne seront pas enregistrées.',()=>{clearInterval(tick);S=null;show('home');renderHome();});
+$('againBtn').onclick=()=>start(S.mode==='errors'&&!store.errors.length?'exam':S.mode,S.cat);
+$('homeBtn').onclick=()=>{show('home');renderHome();};
+document.querySelectorAll('.filters .chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('.filters .chip').forEach(x=>x.setAttribute('aria-pressed',x===c?'true':'false'));renderReview(c.dataset.f);});
+document.addEventListener('keydown',e=>{
+  if(!S||S.done||$('quiz').classList.contains('hidden')||($('confirm').open||false))return;
+  const k=e.key.toUpperCase();
+  const pos=LETTERS.indexOf(k);
+  if(pos>=0&&k.length===1){choose(S.qs[S.i].order[pos]);}
+  else if(e.key==='ArrowRight'){next();}
+  else if(e.key==='ArrowLeft'&&S.i>0){S.i--;render();}
+});
+renderHome();
+window.__ecReady=true;
+})();
+</script>
+<script>
+if(!window.__ecReady){var b=document.getElementById('jsErr');if(b&&b.style.display!=='block'){b.textContent='Le simulateur n’a pas pu démarrer sur ce navigateur ('+(window.__ecUA||'')+').';b.style.display='block';}}
+</script>
+</body>
+</html>
