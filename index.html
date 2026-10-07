@@ -210,7 +210,7 @@ dialog::backdrop{background:rgba(10,15,30,.5)}
     <button class="mode" data-mode="errors" id="errBtn"><strong>Revoir mes erreurs</strong><small id="errInfo">Aucune erreur enregistrée pour l’instant</small><span class="go">Commencer</span></button>
   </div>
   <div class="history" id="history"></div>
-  <p class="note">Les mises en situation officielles ne sont pas publiées : celles proposées ici sont des exercices inspirés des thèmes de l’examen. La référence reste le site <a href="https://formation-civique.interieur.gouv.fr/" target="_blank" rel="noopener">formation-civique.interieur.gouv.fr</a>. <br>Auteur: Sayouba OUEDRAOGO </p>
+  <p class="note">Les mises en situation officielles ne sont pas publiées : celles proposées ici sont des exercices inspirés des thèmes de l’examen. La référence reste le site <a href="https://formation-civique.interieur.gouv.fr/" target="_blank" rel="noopener">formation-civique.interieur.gouv.fr</a>. <br>Auteur: Sayouba OUEDRAOGO</p>
 </section>
 
 <!-- CHOIX DU THÈME -->
@@ -325,6 +325,9 @@ const $ = id=>document.getElementById(id);
 const shuffle = a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
 
 let S=null, tick=null, pickN=10;
+// Suivi anonyme de l’usage via GoatCounter (aucune donnée personnelle, aucun cookie)
+const MODE_NAME={exam:'examen-blanc',train:'entrainement',sit:'mises-en-situation',errors:'revoir-erreurs',theme:'theme'};
+function track(path,title){try{if(window.goatcounter&&typeof window.goatcounter.count==='function')window.goatcounter.count({path:path,title:title||path,event:true});}catch(e){}}
 
 // Catégories suivies : les 5 thématiques (connaissance) + les mises en situation
 const CATS=[
@@ -391,6 +394,7 @@ function start(mode,opt){
   if(!qs.length) return;
   S={mode,cat:opt,immediate:mode!=='exam',qs:qs.map(q=>({...q,order:shuffle([0,1,2,3])})),ans:Array(qs.length).fill(null),checked:Array(qs.length).fill(false),i:0,t0:Date.now(),done:false};
   show('quiz');
+  track('debut/'+MODE_NAME[mode]+(mode==='theme'?'/'+({P:'principes-valeurs',I:'institutions',D:'droits-devoirs',H:'histoire-geographie',V:'vie-en-societe',S:'mises-en-situation'}[opt]||opt):''),'Début : '+MODE_NAME[mode]+(mode==='theme'?' '+catLabel(opt):''));
   buildStrip();
   $('timer').classList.toggle('hidden',mode!=='exam');
   $('legend').innerHTML=S.immediate?'<span><i style="background:var(--good)"></i>Bonne réponse</span><span><i style="background:var(--bad)"></i>Erreur</span><span><i style="background:var(--cell)"></i>À faire</span>':'<span><i style="background:var(--accent)"></i>Connaissance répondue</span><span><i style="background:var(--sit)"></i>Mise en situation répondue</span><span><i style="background:var(--cell)"></i>Sans réponse</span>';
@@ -476,6 +480,7 @@ function finish(timeout){
   save();
 
   const pass=S.mode==='exam'||S.mode==='train'?score>=32:null;
+  track('fin/'+MODE_NAME[S.mode]+(pass===null?'':pass?'/reussi':'/echoue'),'Fin : '+MODE_NAME[S.mode]+(pass===null?'':pass?' (réussi)':' (échoué)'));
   $('score').innerHTML=`${score}<small>/${n}</small>`;
   const v=$('verdict');
   if(pass===null){v.textContent=score===n?'Sans faute':'Bilan de la série';v.className='verdict';}
@@ -608,7 +613,7 @@ function renderHome(){
 
 document.querySelectorAll('.mode[data-mode]').forEach(b=>b.onclick=()=>start(b.dataset.mode));
 $('themeBtn').onclick=()=>{renderPick();show('pick');};
-$('statsBtn').onclick=()=>{renderStats();show('stats');};
+$('statsBtn').onclick=()=>{track('vue/statistiques','Consultation des statistiques');renderStats();show('stats');};
 $('resStatsBtn').onclick=()=>{renderStats();show('stats');};
 document.querySelectorAll('[data-home]').forEach(b=>b.onclick=()=>{show('home');renderHome();});
 document.querySelectorAll('.sizes .chip').forEach(c=>c.onclick=()=>{pickN=+c.dataset.n;document.querySelectorAll('.sizes .chip').forEach(x=>x.setAttribute('aria-pressed',x===c?'true':'false'));});
@@ -633,7 +638,6 @@ window.__ecReady=true;
 <script>
 if(!window.__ecReady){var b=document.getElementById('jsErr');if(b&&b.style.display!=='block'){b.textContent='Le simulateur n’a pas pu démarrer sur ce navigateur ('+(window.__ecUA||'')+').';b.style.display='block';}}
 </script>
+<script data-goatcounter="https://examen-civique.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </body>
 </html>
-<script data-goatcounter="https://examen-civique.goatcounter.com/count"
-        async src="//gc.zgo.at/count.js"></script>
